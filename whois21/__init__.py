@@ -1,6 +1,8 @@
 # whois21.__init__.py
 
+import re
 import os
+import json
 import socket
 
 from datetime import datetime
@@ -16,7 +18,7 @@ from whois21.DNS import download_dns_json, get_dns_dict, get_dns_services, domai
     domain_registration_data_lookup
 from .__main__ import main
 
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 __github__ = 'https://github.com/MPCodeWriter21/whois21'
 __author__ = 'CodeWriter21'
 __email__ = 'CodeWriter21@gmail.com'
@@ -26,7 +28,7 @@ __all__ = ['__version__', '__github__', '__author__', '__email__', '__license__'
            'get_asn_dict', 'get_asn_services', 'ip_registration_data_lookup_', 'ip_registration_data_lookup',
            'download_dns_json', 'get_dns_dict', 'get_dns_services', 'domain_registration_data_lookup_',
            'domain_registration_data_lookup', 'validate_ip', 'WHOIS', 'registration_data_lookup', 'get_whois_servers',
-           'whois_servers', 'whois']
+           'whois_servers', 'vcard_map']
 
 LRED = log21.get_color('Light Red')
 LGREEN = log21.get_color('Light Green')
@@ -135,21 +137,88 @@ whois_servers: dict = {
 for _key, _value in get_whois_servers().items():
     whois_servers[_key] = {*whois_servers.get(_key, {}), _value}
 
+with open(str(importlib_resources.files('whois21') / 'vcard-map.json'), 'r') as f:
+    vcard_map = json.load(f)
+
 
 class WHOIS:
+    __domain: str
+    __success: bool = False
     __error: str = ''
     __raw: bytes = b''
     __servers: Set[str] = set()
     __whois_data: dict = {}
+    __rdap_data: dict = {}
     timeout: int = 10
 
-    def __init__(self, domain: str, servers: Sequence[str] = None, timeout: int = 10):
+    def __init__(self, domain: str, servers: Sequence[str] = None, timeout: int = 10, use_rdap: bool = True,
+                 force_rdap: bool = False):
+        self.whois(domain, servers, timeout, use_rdap, force_rdap)
+
+    def whois(self, domain: str, servers: Sequence[str] = None, timeout: int = 10, use_rdap: bool = True,
+              force_rdap: bool = False):
+        """
+        Queries the whois server for the domain.
+
+        :param domain: The domain/ip to query.
+        :param servers: The servers to use.
+        :param timeout: The timeout in seconds.
+        :param use_rdap: If True, the RDAP server will be used if the whois servers don't respond.
+        :param force_rdap: If True, the RDAP server will be used even if the whois servers respond.
+        """
         self.__domain = domain.lower()
         self.__success = False
         self.__servers = set(servers) if servers else set()
         self.__whois_data = {}
         self.timeout = timeout
+        self.__error = ''
+        self.__raw = b''
 
+        if not force_rdap:
+            self.__whois()
+
+        if (not self.__success and use_rdap) or force_rdap:
+            self.__rdap()
+
+        self.__set_attrs()
+
+    def __set_attrs(self):
+        # Save the whois information in object attributes.
+        self.registry_domain_id = self.__whois_data.get('REGISTRY DOMAIN ID', '')
+        self.registrar_whois_server = self.__whois_data.get('REGISTRAR WHOIS SERVER', '')
+        self.registrar_url = self.__whois_data.get('REGISTRAR URL', '')
+        self.updated_date = self.__whois_data.get('UPDATED DATE', '')
+        self.creation_date = self.__whois_data.get('CREATION DATE', '')
+        self.expires_date = self.__whois_data.get('REGISTRY EXPIRY DATE', '') or \
+                            self.__whois_data.get('REGISTRAR REGISTRATION EXPIRATION DATE', '')
+        self.registrar_name = self.__whois_data.get('REGISTRAR', '')
+        self.registrar_iana_id = self.__whois_data.get('REGISTRAR IANA ID', '')
+        self.registrar_abuse_contact_email = self.__whois_data.get('REGISTRAR ABUSE CONTACT EMAIL', '')
+        self.registrar_abuse_contact_phone = self.__whois_data.get('REGISTRAR ABUSE CONTACT PHONE', '')
+        self.status = self.__whois_data.get('DOMAIN STATUS', [])
+        self.name_servers = self.__whois_data.get('NAME SERVER', [])
+
+        def parse_time(date_time: str) -> Union[datetime, None]:
+            """
+            Parses a date time string.
+
+            :param date_time: The date time string.
+            :return: The parsed date time.
+            """
+            result = re.findall(r'(\d{4}\-\d{2}\-\d{2}).(\d{2}:\d{2}:\d{2})*', date_time)
+            if result:
+                return datetime.strptime(' '.join(result[0]), '%Y-%m-%d %H:%M:%S')
+            return None
+
+        # Convert the dates to datetime objects.
+        if self.updated_date:
+            self.updated_date = parse_time(self.updated_date)
+        if self.creation_date:
+            self.creation_date = parse_time(self.creation_date)
+        if self.expires_date:
+            self.expires_date = parse_time(self.expires_date)
+
+    def __whois(self):
         if not self.__servers:
             # Collects a set of whois servers to use.
             self.__whois_iana()
@@ -166,30 +235,6 @@ class WHOIS:
 
         if self.__error:
             return
-
-        # Save the whois information in object attributes.
-        self.registry_domain_id = self.__whois_data.get('REGISTRY DOMAIN ID', '')
-        self.registrar_whois_server = self.__whois_data.get('REGISTRAR WHOIS SERVER', '')
-        self.registrar_url = self.__whois_data.get('REGISTRAR URL', '')
-        self.updated_date = self.__whois_data.get('UPDATED DATE', '')
-        self.creation_date = self.__whois_data.get('CREATION DATE', '')
-        self.expires_date = self.__whois_data.get('REGISTRY EXPIRY DATE', '') or \
-                            self.__whois_data.get('Registrar Registration Expiration Date', '')
-        self.registrar_name = self.__whois_data.get('REGISTRAR', '')
-        self.registrar_iana_id = self.__whois_data.get('REGISTRAR IANA ID', '')
-        self.registrar_abuse_contact_email = self.__whois_data.get('REGISTRAR ABUSE CONTACT EMAIL', '')
-        self.registrar_abuse_contact_phone = self.__whois_data.get('REGISTRAR ABUSE CONTACT PHONE', '')
-        self.status = self.__whois_data.get('DOMAIN STATUS', [])
-        self.name_servers = self.__whois_data.get('NAME SERVER', [])
-        self.dnssec = self.__whois_data.get('DNSSEC', '')
-
-        # Convert the dates to datetime objects.
-        if self.updated_date:
-            self.updated_date = datetime.strptime(self.updated_date, '%Y-%m-%dT%H:%M:%SZ')
-        if self.creation_date:
-            self.creation_date = datetime.strptime(self.creation_date, '%Y-%m-%dT%H:%M:%SZ')
-        if self.expires_date:
-            self.expires_date = datetime.strptime(self.expires_date, '%Y-%m-%dT%H:%M:%SZ')
 
         self.__success = True
         self.__error = ''
@@ -352,9 +397,142 @@ class WHOIS:
             self.__error = ''
             return
 
+    def __rdap(self):
+        # Get the rdap information for the domain.
+        log21.debug('Getting rdap information...')
+        try:
+            self.__rdap_data = registration_data_lookup(self.domain)
+        except Exception as e:
+            log21.debug(f'{LRED}Error{RESET} getting rdap information: {e.__class__.__name__}: {e}')
+            self.__error = f'Error getting rdap information: {e.__class__.__name__}: {e}'
+            return
+
+        if not self.__rdap_data:
+            log21.debug(f'{LRED}No data found.{RESET}')
+            self.__error = 'No rdap data found.'
+            return
+
+        # Check if the rdap server returned any error messages.
+        if 'error' in self.__rdap_data:
+            log21.debug(f'{LRED}Error{RESET} found in rdap data.')
+            self.__error = 'Error found in rdap data.'
+            return
+
+        self.__parse_rdap_data()
+        return
+
+    def __parse_rdap_data(self):
+        """
+        Parses the RDAP data and puts some information in whois_data dictionary.
+        """
+
+        # Parse the rdap data and extract the whois information.
+        log21.debug('Parsing rdap data...')
+        self.__whois_data = {
+            'REGISTRAR WHOIS SERVER': self.__rdap_data.get('port43'),
+            'REGISTRY DOMAIN ID': self.__rdap_data.get('handle')
+        }
+        # Handle events
+        for event in self.__rdap_data.get('events', []):
+            if event.get('eventAction') == 'transfer':
+                self.__whois_data['TRANSFER DATE'] = event.get('eventDate')
+            elif event.get('eventAction') == 'expiration':
+                self.__whois_data['REGISTRY EXPIRY DATE'] = event.get('eventDate')
+            elif event.get('eventAction') == 'registration':
+                self.__whois_data['CREATION DATE'] = event.get('eventDate')
+            elif event.get('eventAction') == 'last changed':
+                self.__whois_data['UPDATED DATE'] = event.get('eventDate')
+
+        # Handle status
+        self.__whois_data['DOMAIN STATUS'] = self.__rdap_data.get('status', [])
+
+        self.__whois_data['NAME SERVER'] = []
+        # Handle nameservers
+        for nameserver in self.__rdap_data.get('nameservers', []):
+            if nameserver.get('ldhName'):
+                self.__whois_data['NAME SERVER'].append(nameserver.get('ldhName'))
+
+        # Handle entities
+        def handle_entity(prefix: str, entity_: dict):
+            """
+            Handles an entity dictionary.
+            Example entity:
+            >>> {
+            ...     "objectClassName": "entity",
+            ...     "handle": "...",
+            ...     "roles": ["..."],
+            ...     "publicIds": [{...}],
+            ...     "vcardArray": ["vcard", [...]],
+            ...     "entities": [{...}, ...],
+            ...     "events": [{...}, ...],
+            ...     "remarks": [{...}, ...]
+            ... }
+            ...
+
+            :param prefix: The prefix to use for the key.
+            :param entity_: The entity dictionary.
+            """
+            prefix += entity_.get('roles', [''])[0]
+            prefix = prefix.strip().upper()
+            for public_id in entity_.get('publicIds', []):
+                # Example:
+                # "publicIds": [
+                #     {
+                #         "type": "IANA Registrar ID",
+                #         "identifier": "292"
+                #     }
+                # ]
+                if 'type' in public_id and 'identifier' in public_id:
+                    self.__whois_data[public_id.get('type').upper()] = public_id.get('identifier')
+
+            # Handle vcards
+            # Reference: https://www.rfc-editor.org/rfc/rfc6350.txt
+            # Reference: https://en.wikipedia.org/wiki/VCard
+            # vcardArray Example:
+            # "vcardArray": [
+            #                   "vcard",
+            #                   [
+            #                       [
+            #                           "version",
+            #                           {},
+            #                           "text",
+            #                           "4.0"
+            #                       ],
+            #                       [
+            #                           "fn",
+            #                           {},
+            #                           "text",
+            #                           "MarkMonitor Inc."
+            #                       ]
+            #                   ]
+            #               ]
+            for vcard in entity_.get('vcardArray', ['vcard', []])[1]:
+                data = vcard[3]
+                temp = []
+                if isinstance(data, list):
+                    for part in data:
+                        if part:
+                            temp.append(part)
+                data = ' '.join(temp)
+
+                if vcard[0] in vcard_map:
+                    self.__whois_data[prefix + ' ' + vcard_map[vcard[0]]] = data
+                elif vcard[0] != 'version':
+                    self.__whois_data[prefix + ' ' + vcard[0].upper()] = data
+
+            for _entity in entity_.get('entities', []):
+                handle_entity(prefix, _entity)
+
+        for entity in self.__rdap_data.get('entities', []):
+            handle_entity('', entity)
+
     @property
     def whois_data(self):
         return self.__whois_data
+
+    @property
+    def rdap_data(self):
+        return self.__rdap_data
 
     @property
     def servers(self):
@@ -400,19 +578,3 @@ def registration_data_lookup(domain: str, timeout: int = 10) -> dict:
         return ip_registration_data_lookup(domain, timeout)
     else:
         return domain_registration_data_lookup(domain, timeout)
-
-
-def whois(domain: str, timeout: int = 10) -> Union[WHOIS, dict]:
-    """
-    Tries to lookup whois information of the given domain/ip using WHOIS class and in case it fails,
-    it will try to use the registration_data_lookup function.
-
-    :param domain: The domain/ip to lookup.
-    :param timeout: The timeout for the socket connection.
-    :return: A WHOIS object.
-    """
-    whois_ = WHOIS(domain, timeout=timeout)
-    if whois_.success:
-        return whois_
-
-    return registration_data_lookup(domain, timeout)

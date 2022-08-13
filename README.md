@@ -46,12 +46,41 @@ Or you can clone [the repository](https://github.com/MPCodeWriter21/whois21) and
 python setup.py install
 ```
 
+### Dependencies
+
++ [requests](https://requests.readthedocs.io/en/master/): Used for:
+    - Downloading list of whois and RDAP servers.
+    - Downloading RDAP information.
++ [importlib_resources](https://importlib-resources.readthedocs.io/en/latest/): Used for:
+    - Getting the path to the whois21 package installation directory(for saving server lists).
++ [log21](https://github.com/MPCodeWriter21/log21): Used for:
+    - Colorized Logging.
+    - Printing collected data in pprint or tree format.
++ [os](https://docs.python.org/3/library/os.html) (A core python module): Used for:
+    - Working with files and directories.
++ [socket](https://docs.python.org/3/library/socket.html) (A core python module): Used for:
+    - Establishing TCP connection to the whois server.
++ [json](https://docs.python.org/3/library/json.html) (A core python module): Used for:
+    - Parsing JSON data from RDAP servers.
+    - Parsing RDAP server list.
+    - Saving collected whois or/and RDAP data to a file.
+    - Loading some package data from a file.
++ [datetime](https://docs.python.org/3/library/datetime.html) (A core python module): Used for:
+    - Converting Creation/Updated/Expiration date to a usable python datetime object.
++ [ipaddress](https://docs.python.org/3/library/ipaddress.html) (A core python module): Used for:
+    - Validating IPv4 and IPv6 addresses.
++ [typing](https://docs.python.org/3/library/typing.html) (A core python module): Used for:
+    - Type checking.
+    - Type hinting.
++ [re](https://docs.python.org/3/library/re.html) (A core python module): Used for:
+    - Matching date-time strings with regular expressions.
+
 Changes
 -------
 
-### 1.0.0
+### 1.1.0
 
-Version 1.0.0
+Added RDAP information collection and parsing support to WHOIS class.
 
 Usage Examples:
 ---------------
@@ -150,4 +179,26 @@ In order to support this project you can donate some crypto of your choice 8D
 
 Or if you can't, give [this project](https://github.com/MPCodeWriter21/whois21) a star on GitHub :)
 
+References
+----------
 
++ WHOIS (Wikipedia): [https://en.wikipedia.org/wiki/WHOIS](https://en.wikipedia.org/wiki/WHOIS)
++ Domains: [https://www.iana.org/domains/root/db/](https://www.iana.org/domains/root/db/)
++ Registration Data Access Protocol (RDAP) (
+  Wikipedia): [https://en.wikipedia.org/wiki/Registration_Data_Access_Protocol](https://en.wikipedia.org/wiki/Registration_Data_Access_Protocol)
++ RDAP Response Profile (
+  PDF): [https://www.icann.org/en/system/files/files/rdap-response-profile-15feb19-en.pdf](https://www.icann.org/en/system/files/files/rdap-response-profile-15feb19-en.pdf)
++ Registration Data Access Protocol (RDAP) Query
+  Format: [https://www.rfc-editor.org/rfc/rfc7482.html](https://www.rfc-editor.org/rfc/rfc7482.html)
++ Registration Data Access Protocol (RDAP) Object
+  Tagging: [https://www.rfc-editor.org/rfc/rfc8521.html](https://www.rfc-editor.org/rfc/rfc8521.html)
++ Finding the Authoritative Registration Data (RDAP)
+  Service: [https://www.rfc-editor.org/rfc/rfc7484.html](https://www.rfc-editor.org/rfc/rfc7484.html)
++ JSON Responses for the Registration Data Access Protocol (
+  RDAP): [https://www.rfc-editor.org/rfc/rfc7483](https://www.rfc-editor.org/rfc/rfc7483)
++ Registration Data Access Protocol (RDAP) Partial
+  Response: [https://www.rfc-editor.org/rfc/rfc8982.html](https://www.rfc-editor.org/rfc/rfc8982.html)
++ vCard Format Specification: [https://www.rfc-editor.org/rfc/rfc6350.txt](https://www.rfc-editor.org/rfc/rfc6350.txt)
++ vCard (Wikipedia): [https://en.wikipedia.org/wiki/VCard](https://en.wikipedia.org/wiki/VCard)
++ Notes on vCard, LDIF and mappings to
+  RDF: [https://www.w3.org/2002/12/cal/vcard-notes.html](https://www.w3.org/2002/12/cal/vcard-notes.html)

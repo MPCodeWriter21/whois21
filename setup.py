@@ -6,7 +6,7 @@ with open('README.md', 'r') as f:
     LONG_DESCRIPTION = f.read()
 
 DESCRIPTION = 'A simple python package for sending whois requests and parsing the responses.'
-VERSION = '1.0.0'
+VERSION = '1.1.0'
 REQUIREMENTS = ['log21', 'importlib_resources', 'requests']
 
 setup(
@@ -30,5 +30,6 @@ setup(
     },
     install_requires=REQUIREMENTS,
     keywords=['python', 'python3', 'CodeWriter21', 'WHOIS', 'whois21', 'RDAP', 'Registration Data Access Protocol',
-              'DNS', 'ASN']
+              'DNS', 'ASN'],
+    include_package_data=True
 )

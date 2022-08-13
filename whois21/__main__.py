@@ -78,18 +78,31 @@ def main():
             for domain in args.domains:
                 log21.info(f'Looking up {domain}...')
                 result = whois21.WHOIS(domain, timeout=args.timeout)
-                if not args.no_print:
-                    print(result)
-                if args.output:
-                    filename = get_filename(args.output, domain, 'txt')
-                    with open(filename, 'wb') as file:
-                        file.write(result.raw)
-                    log21.info(f'Saved whois data to {filename}.')
+                if result.raw:
+                    if not args.no_print:
+                        print(result)
+                    if args.output:
+                        filename = get_filename(args.output, domain, 'txt')
+                        with open(filename, 'wb') as file:
+                            file.write(result.raw)
+                        log21.info(f'Saved whois data to {filename}.')
+                elif result.whois_data:
+                    if not args.no_print:
+                        print_result(result.whois_data)
+                    if args.output:
+                        filename = get_filename(args.output, domain, 'json')
+                        with open(filename, 'w') as file:
+                            json.dump(result.whois_data, file, indent=4)
+                        log21.info(f'Saved whois data to {filename}.')
+                elif result.error:
+                    log21.error(result.error)
+                else:
+                    log21.error(f'Unknown error for {domain}.')
         else:
             if args.registration_data:
                 for domain in args.domains:
                     log21.info(f'Looking up registration data for {domain}...')
-                    result = whois21.registration_data_lookup(domain, timeout=args.timeout)
+                    result = whois21.WHOIS(domain, timeout=args.timeout, force_rdap=True).rdap_data
                     print_result(result)
                     if args.output:
                         filename = get_filename(args.output, domain)
