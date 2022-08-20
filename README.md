@@ -9,12 +9,13 @@ whois21
 
 whois21 is a simple and easy to use python package that lets you easily query whois information of a domain.
 
-
 Features
 --------
 
 ### WHOIS
 
++ Query whois information of a TLD from various whois servers and parse the results.
++ Get the Registration Information of a domain from different RDAP servers and parse the results.
 + Any idea? Feel free to [open an issue](https://github.com/MPCodeWriter21/whois21/issues) or submit a pull request.
 
 ![issues](https://img.shields.io/github/issues/MPCodeWriter21/whois21)
@@ -78,9 +79,9 @@ python setup.py install
 Changes
 -------
 
-### 1.1.0
+### 1.1.1
 
-Added RDAP information collection and parsing support to WHOIS class.
+Minor Fixes.
 
 Usage Examples:
 ---------------

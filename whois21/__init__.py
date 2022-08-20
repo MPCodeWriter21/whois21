@@ -18,7 +18,7 @@ from whois21.DNS import download_dns_json, get_dns_dict, get_dns_services, domai
     domain_registration_data_lookup
 from .__main__ import main
 
-__version__ = '1.1.0'
+__version__ = '1.1.1'
 __github__ = 'https://github.com/MPCodeWriter21/whois21'
 __author__ = 'CodeWriter21'
 __email__ = 'CodeWriter21@gmail.com'

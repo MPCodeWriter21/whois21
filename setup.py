@@ -5,8 +5,8 @@ from setuptools import setup, find_packages
 with open('README.md', 'r') as f:
     LONG_DESCRIPTION = f.read()
 
-DESCRIPTION = 'A simple python package for sending whois requests and parsing the responses.'
-VERSION = '1.1.0'
+DESCRIPTION = 'A simple and easy to use Python package that lets you query whois/RDAP information of a domain/IP.'
+VERSION = '1.1.1'
 REQUIREMENTS = ['log21', 'importlib_resources', 'requests']
 
 setup(
@@ -15,7 +15,7 @@ setup(
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
-    url='https://github.com/MPCodeWriter21/PACKAGE_NAME',
+    url='https://github.com/MPCodeWriter21/whois21',
     author='CodeWriter21',
     author_email='CodeWriter21@gmail.com',
     license='Apache License 2.0',

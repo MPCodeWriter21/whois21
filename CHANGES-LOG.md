@@ -6,6 +6,10 @@ Help this project by [Donation](DONATE.md)
 Changes log
 -----------
 
+### 1.1.1
+
+Minor Fixes.
+
 ### 1.1.0
 
 Added RDAP information collection and parsing support to WHOIS class.
