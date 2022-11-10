@@ -79,9 +79,9 @@ python setup.py install
 Changes
 -------
 
-### 1.1.1
+### 1.1.2
 
-Minor Fixes.
+Fixed KeyboardInterrupt handling with `whois21` command.
 
 Usage Examples:
 ---------------

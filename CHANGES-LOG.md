@@ -6,6 +6,10 @@ Help this project by [Donation](DONATE.md)
 Changes log
 -----------
 
+### 1.1.2
+
+Fixed KeyboardInterrupt handling with `whois21` command.
+
 ### 1.1.1
 
 Minor Fixes.
