@@ -7,7 +7,7 @@ whois21
 ![repo size](https://img.shields.io/github/repo-size/MPCodeWriter21/whois21)
 [![CodeFactor](https://www.codefactor.io/repository/github/mpcodewriter21/whois21/badge)](https://www.codefactor.io/repository/github/mpcodewriter21/whois21)
 
-whois21 is a simple and easy to use python package that lets you easily query whois information of a domain.
+WHOIS21 is a simple and easy to use python package that lets you easily query whois information of a domain.
 
 Features
 --------
@@ -16,6 +16,7 @@ Features
 
 + Query whois information of a TLD from various whois servers and parse the results.
 + Get the Registration Information of a domain from different RDAP servers and parse the results.
++ Get IP information from ip-api.com.
 + Any idea? Feel free to [open an issue](https://github.com/MPCodeWriter21/whois21/issues) or submit a pull request.
 
 ![issues](https://img.shields.io/github/issues/MPCodeWriter21/whois21)
@@ -79,9 +80,9 @@ python setup.py install
 Changes
 -------
 
-### 1.1.2
+### 1.2.0
 
-Fixed KeyboardInterrupt handling with `whois21` command.
+Added ip-api.com API support.
 
 Usage Examples:
 ---------------
@@ -195,8 +196,8 @@ References
   Tagging: [https://www.rfc-editor.org/rfc/rfc8521.html](https://www.rfc-editor.org/rfc/rfc8521.html)
 + Finding the Authoritative Registration Data (RDAP)
   Service: [https://www.rfc-editor.org/rfc/rfc7484.html](https://www.rfc-editor.org/rfc/rfc7484.html)
-+ JSON Responses for the Registration Data Access Protocol (
-  RDAP): [https://www.rfc-editor.org/rfc/rfc7483](https://www.rfc-editor.org/rfc/rfc7483)
++ JSON Responses for the Registration Data Access Protocol (RDAP):
+  [https://www.rfc-editor.org/rfc/rfc7483](https://www.rfc-editor.org/rfc/rfc7483)
 + Registration Data Access Protocol (RDAP) Partial
   Response: [https://www.rfc-editor.org/rfc/rfc8982.html](https://www.rfc-editor.org/rfc/rfc8982.html)
 + vCard Format Specification: [https://www.rfc-editor.org/rfc/rfc6350.txt](https://www.rfc-editor.org/rfc/rfc6350.txt)

@@ -6,8 +6,8 @@ with open('README.md', 'r') as f:
     LONG_DESCRIPTION = f.read()
 
 DESCRIPTION = 'A simple and easy to use Python package that lets you query whois/RDAP information of a domain/IP.'
-VERSION = '1.1.2'
-REQUIREMENTS = ['log21', 'importlib_resources', 'requests']
+VERSION = '1.2.0'
+REQUIREMENTS = ['log21>=2.4.1', 'importlib_resources', 'requests']
 
 setup(
     name='whois21',

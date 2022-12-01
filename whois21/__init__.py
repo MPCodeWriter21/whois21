@@ -16,9 +16,9 @@ from whois21.ASN import download_asn_json, get_asn_dict, get_asn_services, ip_re
     ip_registration_data_lookup, validate_ip
 from whois21.DNS import download_dns_json, get_dns_dict, get_dns_services, domain_registration_data_lookup_, \
     domain_registration_data_lookup
-from .__main__ import main
+from whois21.API import lookup_ip_ip_api, batch_lookup_ip_ip_api
 
-__version__ = '1.1.2'
+__version__ = '1.2.0'
 __github__ = 'https://github.com/MPCodeWriter21/whois21'
 __author__ = 'CodeWriter21'
 __email__ = 'CodeWriter21@gmail.com'
@@ -56,8 +56,8 @@ def download_whois_servers(path: Union[str, os.PathLike] = None) -> str:
 
     log21.debug(f'Downloading {LGREEN}whois-servers.txt{RESET} file to `{BLUE}{path}{RESET}`')
 
-    with open(path, 'wb') as f:
-        f.write(requests.get('https://www.nirsoft.net/whois-servers.txt').content)
+    with open(path, 'wb') as file:
+        file.write(requests.get('https://www.nirsoft.net/whois-servers.txt').content)
 
     return str(path)
 
@@ -77,9 +77,9 @@ def get_whois_servers(force_download: bool = False, path: Union[str, os.PathLike
         download_whois_servers(path)
 
     data = dict()
-    with open(path, 'r') as f:
-        for line in f:
-            if line.startswith(';') or not ' ' in line:
+    with open(path, 'r') as file:
+        for line in file:
+            if line.startswith(';') or ' ' not in line:
                 continue
             key, value = line.split(' ', 1)
             data[key] = value.strip(' \n')
@@ -512,7 +512,7 @@ class WHOIS:
                 if isinstance(data, list):
                     for part in data:
                         if part:
-                            temp.append(part)
+                            temp.append(str(part))
                 data = ' '.join(temp)
 
                 if vcard[0] in vcard_map:

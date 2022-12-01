@@ -36,6 +36,7 @@ def main():
     parser.add_argument('domains', help='The domain/ip to lookup.', type=str, nargs='*')
     parser.add_argument('-r', '--registration-data', action='store_true',
                         help='Lookup the registration data for a domain.')
+    parser.add_argument('-i', '--ip-api', action='store_true', help='Lookup the ip using ip-api.com.')
     parser.add_argument('-to', '--timeout', type=int, default=10,
                         help='The time out for the WHOIS request(default=10).')
     parser.add_argument('-t', '--tree-print', action='store_true',
@@ -59,12 +60,18 @@ def main():
         parser.error('Cannot use both -np and -t.')
     if args.raw and args.tree_print:
         parser.error('Cannot use both -R and -t.')
+    if args.registration_data and args.ip_api:
+        parser.error('Cannot use both -r and -i.')
+
     if args.raw and args.registration_data:
         log21.warn('-R will not effect results from -r.')
+    if args.raw and args.ip_api:
+        log21.warn('-R will not effect results from -i.')
+
     if args.no_print:
         if not args.output:
             parser.error('Must specify an output folder with -o when using -np.')
-        print_result = lambda *args, **kwargs: None
+        print_result = lambda *_args, **kwargs: None
     elif args.tree_print:
         print_result = log21.tree_print
     else:
@@ -74,7 +81,7 @@ def main():
         os.makedirs(args.output, exist_ok=True)
 
     if args.domains:
-        if args.raw and not args.registration_data:
+        if args.raw and not args.registration_data and not args.ip_api:
             for domain in args.domains:
                 log21.info(f'Looking up {domain}...')
                 result = whois21.WHOIS(domain, timeout=args.timeout)
@@ -99,7 +106,17 @@ def main():
                 else:
                     log21.error(f'Unknown error for {domain}.')
         else:
-            if args.registration_data:
+            if args.ip_api:
+                for domain in args.domains:
+                    log21.info(f'Looking up {domain}...')
+                    result = whois21.lookup_ip_ip_api(domain, timeout=args.timeout)
+                    print_result(result)
+                    if args.output:
+                        filename = get_filename(args.output, domain)
+                        with open(filename, 'w') as file:
+                            json.dump(result, file, indent=4)
+                        log21.info(f'Saved registration data to {filename}.')
+            elif args.registration_data:
                 for domain in args.domains:
                     log21.info(f'Looking up registration data for {domain}...')
                     result = whois21.WHOIS(domain, timeout=args.timeout, force_rdap=True).rdap_data
