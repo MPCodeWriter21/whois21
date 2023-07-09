@@ -1,22 +1,22 @@
 # whois21.__init__.py
 
-import re
 import os
+import re
 import json
 import socket
-
+from typing import Set, Union, Optional, Sequence
 from datetime import datetime
-from typing import Union, Set, Sequence
 
 import log21
 import requests
 import importlib_resources
 
-from whois21.ASN import download_asn_json, get_asn_dict, get_asn_services, ip_registration_data_lookup_, \
-    ip_registration_data_lookup, validate_ip
-from whois21.DNS import download_dns_json, get_dns_dict, get_dns_services, domain_registration_data_lookup_, \
-    domain_registration_data_lookup
 from whois21.API import lookup_ip_ip_api, batch_lookup_ip_ip_api
+from whois21.ASN import (validate_ip, get_asn_dict, get_asn_services, download_asn_json,
+                         ip_registration_data_lookup, ip_registration_data_lookup_)
+from whois21.DNS import (get_dns_dict, get_dns_services, download_dns_json,
+                         domain_registration_data_lookup,
+                         domain_registration_data_lookup_)
 
 __version__ = '1.2.0'
 __github__ = 'https://github.com/MPCodeWriter21/whois21'
@@ -24,11 +24,15 @@ __author__ = 'CodeWriter21'
 __email__ = 'CodeWriter21@gmail.com'
 __license__ = 'Apache License 2.0'
 
-__all__ = ['__version__', '__github__', '__author__', '__email__', '__license__', 'download_asn_json',
-           'get_asn_dict', 'get_asn_services', 'ip_registration_data_lookup_', 'ip_registration_data_lookup',
-           'download_dns_json', 'get_dns_dict', 'get_dns_services', 'domain_registration_data_lookup_',
-           'domain_registration_data_lookup', 'validate_ip', 'WHOIS', 'registration_data_lookup', 'get_whois_servers',
-           'whois_servers', 'vcard_map']
+__all__ = [
+    '__version__', '__github__', '__author__', '__email__', '__license__',
+    'download_asn_json', 'get_asn_dict', 'get_asn_services',
+    'ip_registration_data_lookup_', 'ip_registration_data_lookup', 'download_dns_json',
+    'get_dns_dict', 'get_dns_services', 'domain_registration_data_lookup_',
+    'domain_registration_data_lookup', 'validate_ip', 'WHOIS',
+    'registration_data_lookup', 'get_whois_servers', 'whois_servers', 'vcard_map',
+    'lookup_ip_ip_api', 'batch_lookup_ip_ip_api'
+]
 
 LRED = log21.get_color('Light Red')
 LGREEN = log21.get_color('Light Green')
@@ -41,20 +45,22 @@ CYAN = log21.get_color('Cyan')
 RESET = log21.get_color('Reset')
 
 
-def download_whois_servers(path: Union[str, os.PathLike] = None) -> str:
-    """
-    Downloads the whois whois-servers.txt file from https://www.nirsoft.net/whois-servers.txt.
+def download_whois_servers(path: Optional[Union[str, os.PathLike]] = None) -> str:
+    """Downloads the whois whois-servers.txt file from
+    https://www.nirsoft.net/whois-servers.txt.
 
     :param path: The path to the whois file.
     :return: The path to the downloaded file.
     """
     if not path:
-        path = importlib_resources.files('whois21') / 'whois-servers.txt'
+        path = str(importlib_resources.files('whois21') / 'whois-servers.txt')
 
     if not os.path.exists(path):
         os.makedirs(os.path.dirname(path), exist_ok=True)
 
-    log21.debug(f'Downloading {LGREEN}whois-servers.txt{RESET} file to `{BLUE}{path}{RESET}`')
+    log21.debug(
+        f'Downloading {LGREEN}whois-servers.txt{RESET} file to `{BLUE}{path}{RESET}`'
+    )
 
     with open(path, 'wb') as file:
         file.write(requests.get('https://www.nirsoft.net/whois-servers.txt').content)
@@ -62,16 +68,17 @@ def download_whois_servers(path: Union[str, os.PathLike] = None) -> str:
     return str(path)
 
 
-def get_whois_servers(force_download: bool = False, path: Union[str, os.PathLike] = None):
-    """
-    Returns a dictionary of the whois-servers.txt file.
+def get_whois_servers(
+    force_download: bool = False, path: Optional[Union[str, os.PathLike]] = None
+):
+    """Returns a dictionary of the whois-servers.txt file.
 
     :param force_download: If True, the whois-servers.txt file will be downloaded again.
     :param path: The path to the whois-servers.txt file.
     :return: A dictionary of the whois-servers.txt file.
     """
     if not path:
-        path = importlib_resources.files('whois21') / 'whois-servers.txt'
+        path = str(importlib_resources.files('whois21') / 'whois-servers.txt')
 
     if not os.path.exists(path) or force_download:
         download_whois_servers(path)
@@ -89,7 +96,8 @@ def get_whois_servers(force_download: bool = False, path: Union[str, os.PathLike
 
 whois_servers: dict = {
     'ABUSE_HOST': 'whois.abuse.net',
-    'LNICHOST': 'whois.lacnic.net',  # Types of queries: POCs, ownerid, CIDR blocks, IP and AS numbers.
+    # Types of queries: POCs, ownerid, CIDR blocks, IP and AS numbers.
+    'LNICHOST': 'whois.lacnic.net',  
     'ai': {'whois.nic.ai'},
     'app': {'whois.nic.google'},
     'ar': {'whois.nic.ar'},
@@ -97,8 +105,10 @@ whois_servers: dict = {
     'ca': {'whois.ca.fury.ca'},
     'chat': {'whois.nic.chat'},
     'cl': {'whois.nic.cl'},
-    'com': {'whois.crsnic.net', 'WHOIS.ENOM.COM', 'whois.joker.com', 'whois.corporatedomains.com',
-            'whois.verisign-grs.com'},
+    'com': {
+        'whois.crsnic.net', 'WHOIS.ENOM.COM', 'whois.joker.com',
+        'whois.corporatedomains.com', 'whois.verisign-grs.com'
+    },
     'cr': {'whois.nic.cr'},
     'edu': {'whois.crsnic.net', 'whois.educause.net'},
     'de': {'whois.denic.de'},
@@ -127,7 +137,8 @@ whois_servers: dict = {
     'nl': {'whois.domain-registry.nl'},
     'online': {'whois.nic.online'},
     'ooo': {'whois.nic.ooo'},
-    'org': {'whois.publicdomainregistry.com', 'whois.gandi.net', 'whois.markmonitor.com'},
+    'org':
+    {'whois.publicdomainregistry.com', 'whois.gandi.net', 'whois.markmonitor.com'},
     'page': {'whois.nic.page'},
     'pe': {'kero.yachay.pe'},
     'website': {'whois.nic.website'},
@@ -151,20 +162,33 @@ class WHOIS:
     __rdap_data: dict = {}
     timeout: int = 10
 
-    def __init__(self, domain: str, servers: Sequence[str] = None, timeout: int = 10, use_rdap: bool = True,
-                 force_rdap: bool = False):
+    def __init__(
+        self,
+        domain: str,
+        servers: Optional[Sequence[str]] = None,
+        timeout: int = 10,
+        use_rdap: bool = True,
+        force_rdap: bool = False
+    ):
         self.whois(domain, servers, timeout, use_rdap, force_rdap)
 
-    def whois(self, domain: str, servers: Sequence[str] = None, timeout: int = 10, use_rdap: bool = True,
-              force_rdap: bool = False):
-        """
-        Queries the whois server for the domain.
+    def whois(
+        self,
+        domain: str,
+        servers: Optional[Sequence[str]] = None,
+        timeout: int = 10,
+        use_rdap: bool = True,
+        force_rdap: bool = False
+    ):
+        """Queries the whois server for the domain.
 
         :param domain: The domain/ip to query.
         :param servers: The servers to use.
         :param timeout: The timeout in seconds.
-        :param use_rdap: If True, the RDAP server will be used if the whois servers don't respond.
-        :param force_rdap: If True, the RDAP server will be used even if the whois servers respond.
+        :param use_rdap: If True, the RDAP server will be used if the
+                whois servers don't respond.
+        :param force_rdap: If True, the RDAP server will be used even if
+                the whois servers respond.
         """
         self.__domain = domain.lower()
         self.__success = False
@@ -185,27 +209,36 @@ class WHOIS:
     def __set_attrs(self):
         # Save the whois information in object attributes.
         self.registry_domain_id = self.__whois_data.get('REGISTRY DOMAIN ID', '')
-        self.registrar_whois_server = self.__whois_data.get('REGISTRAR WHOIS SERVER', '')
+        self.registrar_whois_server = self.__whois_data.get(
+            'REGISTRAR WHOIS SERVER', ''
+        )
         self.registrar_url = self.__whois_data.get('REGISTRAR URL', '')
         self.updated_date = self.__whois_data.get('UPDATED DATE', '')
         self.creation_date = self.__whois_data.get('CREATION DATE', '')
-        self.expires_date = self.__whois_data.get('REGISTRY EXPIRY DATE', '') or \
-                            self.__whois_data.get('REGISTRAR REGISTRATION EXPIRATION DATE', '')
+        self.expires_date = (
+            self.__whois_data.get('REGISTRY EXPIRY DATE', '')
+            or self.__whois_data.get('REGISTRAR REGISTRATION EXPIRATION DATE', '')
+        )
         self.registrar_name = self.__whois_data.get('REGISTRAR', '')
         self.registrar_iana_id = self.__whois_data.get('REGISTRAR IANA ID', '')
-        self.registrar_abuse_contact_email = self.__whois_data.get('REGISTRAR ABUSE CONTACT EMAIL', '')
-        self.registrar_abuse_contact_phone = self.__whois_data.get('REGISTRAR ABUSE CONTACT PHONE', '')
+        self.registrar_abuse_contact_email = self.__whois_data.get(
+            'REGISTRAR ABUSE CONTACT EMAIL', ''
+        )
+        self.registrar_abuse_contact_phone = self.__whois_data.get(
+            'REGISTRAR ABUSE CONTACT PHONE', ''
+        )
         self.status = self.__whois_data.get('DOMAIN STATUS', [])
         self.name_servers = self.__whois_data.get('NAME SERVER', [])
 
         def parse_time(date_time: str) -> Union[datetime, None]:
-            """
-            Parses a date time string.
+            """Parses a date time string.
 
             :param date_time: The date time string.
             :return: The parsed date time.
             """
-            result = re.findall(r'(\d{4}\-\d{2}\-\d{2}).(\d{2}:\d{2}:\d{2})*', date_time)
+            result = re.findall(
+                r'(\d{4}\-\d{2}\-\d{2}).(\d{2}:\d{2}:\d{2})*', date_time
+            )
             if result:
                 return datetime.strptime(' '.join(result[0]), '%Y-%m-%d %H:%M:%S')
             return None
@@ -241,25 +274,36 @@ class WHOIS:
         log21.debug(f'{LGREEN}WHOIS data successfully parsed.{RESET}')
 
     def __whois_iana(self):
-        # Send a query to the whois.iana.org server to find the whois server for the domain.
+        # Send a query to the whois.iana.org server to find the whois server for the
+        # domain.
         # Create a socket connection to the whois.iana.org server.
         log21.debug(f'Connecting to {LBLUE}whois.iana.org:43{RESET}...')
         try:
             sock = socket.create_connection(('whois.iana.org', 43))
             sock.settimeout(self.timeout)
         except socket.error as e:
-            log21.debug(f'Error connecting to "{RED}whois.iana.org:43{RESET}": '
-                        f'{LRED}{e.__class__.__name__}: {e}{RESET}')
-            self.__error = f'Error connecting "to whois.iana.org:43": {e.__class__.__name__}: {e}'
+            log21.debug(
+                f'Error connecting to "{RED}whois.iana.org:43{RESET}": '
+                f'{LRED}{e.__class__.__name__}: {e}{RESET}'
+            )
+            self.__error = (
+                'Error connecting "to whois.iana.org:43": '
+                f'{e.__class__.__name__}: {e}'
+            )
             return
         # Send the domain name to the whois.iana.org server.
         log21.debug(f'Sending query for {LCYAN}{self.domain}{RESET}...')
         try:
             sock.send(self.domain.encode('utf-8') + b'\r\n')
         except socket.error as e:
-            log21.debug(f'Error sending query to "{RED}whois.iana.org:43{RESET}": '
-                        f'{LRED}{e.__class__.__name__}: {e}{RESET}')
-            self.__error = f'Error sending query to "whois.iana.org:43": {e.__class__.__name__}: {e}'
+            log21.debug(
+                f'Error sending query to "{RED}whois.iana.org:43{RESET}": '
+                f'{LRED}{e.__class__.__name__}: {e}{RESET}'
+            )
+            self.__error = (
+                'Error sending query to "whois.iana.org:43": '
+                f'{e.__class__.__name__}: {e}'
+            )
             return
         # Receive the raw data from the whois.iana.org server.
         self.__raw = b''
@@ -271,9 +315,14 @@ class WHOIS:
                     break
                 self.__raw += data
         except socket.error as e:
-            log21.debug(f'Error receiving data from "{RED}whois.iana.org:43{RESET}": '
-                        f'{LRED}{e.__class__.__name__}: {e}{RESET}')
-            self.__error = f'Error receiving data from "whois.iana.org:43": {e.__class__.__name__}: {e}'
+            log21.debug(
+                f'Error receiving data from "{RED}whois.iana.org:43{RESET}": '
+                f'{LRED}{e.__class__.__name__}: {e}{RESET}'
+            )
+            self.__error = (
+                'Error receiving data from "whois.iana.org:43": '
+                f'{e.__class__.__name__}: {e}'
+            )
             return
         sock.close()
 
@@ -284,7 +333,8 @@ class WHOIS:
             return
 
         log21.debug('Parsing data: Searching for whois server...')
-        # Parse the raw data from the whois.iana.org server and extract the whois server.
+        # Parse the raw data from the whois.iana.org server and extract the whois
+        # server.
         for line in self.__raw.decode('utf-8').split('\n'):
             if line.startswith('whois:'):
                 self.__servers.add(line[6:].strip())
@@ -318,18 +368,28 @@ class WHOIS:
                 sock = socket.create_connection((whois_server, 43))
                 sock.settimeout(self.timeout)
             except socket.error as e:
-                log21.debug(f'Error connecting to "{RED}{whois_server}{RESET}": '
-                            f'{LRED}{e.__class__.__name__}: {e}{RESET}')
-                self.__error = f'Error connecting to "{whois_server}": {e.__class__.__name__}: {e}'
+                log21.debug(
+                    f'Error connecting to "{RED}{whois_server}{RESET}": '
+                    f'{LRED}{e.__class__.__name__}: {e}{RESET}'
+                )
+                self.__error = (
+                    f'Error connecting to "{whois_server}": '
+                    f'{e.__class__.__name__}: {e}'
+                )
                 continue
             # Send the domain name to the whois server.
             log21.debug(f'Sending query for {LCYAN}{self.domain}{RESET}...')
             try:
                 sock.send(self.domain.encode('utf-8') + b'\r\n')
             except socket.error as e:
-                log21.debug(f'Error sending query to "{RED}{whois_server}{RESET}": '
-                            f'{LRED}{e.__class__.__name__}: {e}{RESET}')
-                self.__error = f'Error sending query to "{whois_server}": {e.__class__.__name__}: {e}'
+                log21.debug(
+                    f'Error sending query to "{RED}{whois_server}{RESET}": '
+                    f'{LRED}{e.__class__.__name__}: {e}{RESET}'
+                )
+                self.__error = (
+                    f'Error sending query to "{whois_server}": '
+                    f'{e.__class__.__name__}: {e}'
+                )
                 continue
             # Receive the raw whois data from the whois server.
             self.__raw = b''
@@ -341,9 +401,14 @@ class WHOIS:
                         break
                     self.__raw += data
             except socket.error as e:
-                log21.debug(f'Error receiving data from "{RED}{whois_server}{RESET}": '
-                            f'{LRED}{e.__class__.__name__}: {e}{RESET}')
-                self.__error = f'Error receiving data from "{whois_server}": {e.__class__.__name__}: {e}'
+                log21.debug(
+                    f'Error receiving data from "{RED}{whois_server}{RESET}": '
+                    f'{LRED}{e.__class__.__name__}: {e}{RESET}'
+                )
+                self.__error = (
+                    f'Error receiving data from "{whois_server}": '
+                    f'{e.__class__.__name__}: {e}'
+                )
                 continue
             sock.close()
 
@@ -352,7 +417,8 @@ class WHOIS:
                 log21.debug(f'No data received from {RED}{whois_server}{RESET}.')
                 self.__error = f'No data received from {whois_server}.'
                 continue
-            # Parse the raw whois data from the whois server and extract the whois information.
+            # Parse the raw whois data from the whois server and extract the whois
+            # information.
             log21.debug('Parsing data...')
             self.__whois_data = {}
             i = 0
@@ -379,8 +445,10 @@ class WHOIS:
                         if isinstance(self.__whois_data[key.strip().upper()], list):
                             self.__whois_data[key.strip().upper()].append(value.strip())
                         elif isinstance(self.__whois_data[key.strip().upper()], str):
-                            self.__whois_data[key.strip().upper()] = [self.__whois_data[key.strip().upper()],
-                                                                      value.strip()]
+                            self.__whois_data[key.strip().upper()] = [
+                                self.__whois_data[key.strip().upper()],
+                                value.strip()
+                            ]
                 i += 1
 
             if not self.__whois_data:
@@ -403,8 +471,14 @@ class WHOIS:
         try:
             self.__rdap_data = registration_data_lookup(self.domain)
         except Exception as e:
-            log21.debug(f'{LRED}Error{RESET} getting rdap information: {e.__class__.__name__}: {e}')
-            self.__error = f'Error getting rdap information: {e.__class__.__name__}: {e}'
+            log21.debug(
+                f'{LRED}Error{RESET} getting rdap information: '
+                f'{e.__class__.__name__}: {e}'
+            )
+            self.__error = (
+                'Error getting rdap information: '
+                f'{e.__class__.__name__}: {e}'
+            )
             return
 
         if not self.__rdap_data:
@@ -422,9 +496,8 @@ class WHOIS:
         return
 
     def __parse_rdap_data(self):
-        """
-        Parses the RDAP data and puts some information in whois_data dictionary.
-        """
+        """Parses the RDAP data and puts some information in whois_data
+        dictionary."""
 
         # Parse the rdap data and extract the whois information.
         log21.debug('Parsing rdap data...')
@@ -483,7 +556,8 @@ class WHOIS:
                 #     }
                 # ]
                 if 'type' in public_id and 'identifier' in public_id:
-                    self.__whois_data[public_id.get('type').upper()] = public_id.get('identifier')
+                    self.__whois_data[public_id.get('type').upper()
+                                      ] = public_id.get('identifier')
 
             # Handle vcards
             # Reference: https://www.rfc-editor.org/rfc/rfc6350.txt
@@ -568,8 +642,8 @@ class WHOIS:
 
 
 def registration_data_lookup(domain: str, timeout: int = 10) -> dict:
-    """
-    Lookup the registration data for a domain/ip.
+    """Lookup the registration data for a domain/ip.
+
     :param domain: The domain/ip to lookup.
     :param timeout: The timeout for the socket connection.
     :return: A WHOIS object.

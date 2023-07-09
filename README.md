@@ -45,7 +45,7 @@ pip install whois21-x.x.x.tar.gz
 Or you can clone [the repository](https://github.com/MPCodeWriter21/whois21) and run:
 
 ```shell
-python setup.py install
+python -m build .
 ```
 
 ### Dependencies
@@ -80,9 +80,9 @@ python setup.py install
 Changes
 -------
 
-### 1.2.0
+### 1.2.1
 
-Added ip-api.com API support.
+Switched from `setup.py` to `pyproject.toml`.
 
 Usage Examples:
 ---------------
