@@ -4,12 +4,12 @@ import os
 import json
 
 import log21
+
 import whois21
 
 
 def get_filename(directory: str, domain: str, format_: str = 'json') -> str:
-    """
-    Gets a filename to store the registration data in.
+    """Gets a filename to store the registration data in.
 
     :param directory: The directory to store the registration data in.
     :param domain: The domain to get the name for.
@@ -34,19 +34,47 @@ def get_filename(directory: str, domain: str, format_: str = 'json') -> str:
 def main():
     parser = log21.ColorizingArgumentParser()
     parser.add_argument('domains', help='The domain/ip to lookup.', type=str, nargs='*')
-    parser.add_argument('-r', '--registration-data', action='store_true',
-                        help='Lookup the registration data for a domain.')
-    parser.add_argument('-i', '--ip-api', action='store_true', help='Lookup the ip using ip-api.com.')
-    parser.add_argument('-to', '--timeout', type=int, default=10,
-                        help='The time out for the WHOIS request(default=10).')
-    parser.add_argument('-t', '--tree-print', action='store_true',
-                        help='Print the registration data in a tree format.')
+    parser.add_argument(
+        '-r',
+        '--registration-data',
+        action='store_true',
+        help='Lookup the registration data for a domain.'
+    )
+    parser.add_argument(
+        '-i', '--ip-api', action='store_true', help='Lookup the ip using ip-api.com.'
+    )
+    parser.add_argument(
+        '-to',
+        '--timeout',
+        type=int,
+        default=10,
+        help='The time out for the WHOIS request(default=10).'
+    )
+    parser.add_argument(
+        '-t',
+        '--tree-print',
+        action='store_true',
+        help='Print the registration data in a tree format.'
+    )
     parser.add_argument('-o', '--output', help='The output folder.', type=str)
-    parser.add_argument('-R', '--raw', action='store_true', help='Print/save the raw whois data.')
-    parser.add_argument('-np', '--no-print', action='store_true', help='Don\'t print the registration/whois data.')
-    parser.add_argument('-q', '--quiet', action='store_true', help='Don\'t print any output.')
-    parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output.')
-    parser.add_argument('-V', '--version', action='version', version=f'whois21 {whois21.__version__}')
+    parser.add_argument(
+        '-R', '--raw', action='store_true', help='Print/save the raw whois data.'
+    )
+    parser.add_argument(
+        '-np',
+        '--no-print',
+        action='store_true',
+        help='Don\'t print the registration/whois data.'
+    )
+    parser.add_argument(
+        '-q', '--quiet', action='store_true', help='Don\'t print any output.'
+    )
+    parser.add_argument(
+        '-v', '--verbose', action='store_true', help='Enable verbose output.'
+    )
+    parser.add_argument(
+        '-V', '--version', action='version', version=f'whois21 {whois21.__version__}'
+    )
     args = parser.parse_args()
 
     if args.verbose and args.quiet:
@@ -68,10 +96,18 @@ def main():
     if args.raw and args.ip_api:
         log21.warn('-R will not effect results from -i.')
 
+    # I did not want my IDE to tell me not to assign lambdas to variables so I did
+    # this:
+    # locals().update({'print_result': lambda *_, **__: None})
+    # The point is that this makes my IDE think that `print_result` function might be
+    # unbound...
+    # So you know what? I use the other idea I had(which I thought is too stupid to put
+    # here at first)
+    print_result = (lambda f: f)(lambda *_, **__: None)
+
     if args.no_print:
         if not args.output:
             parser.error('Must specify an output folder with -o when using -np.')
-        print_result = lambda *_args, **kwargs: None
     elif args.tree_print:
         print_result = log21.tree_print
     else:
@@ -119,7 +155,9 @@ def main():
             elif args.registration_data:
                 for domain in args.domains:
                     log21.info(f'Looking up registration data for {domain}...')
-                    result = whois21.WHOIS(domain, timeout=args.timeout, force_rdap=True).rdap_data
+                    result = whois21.WHOIS(
+                        domain, timeout=args.timeout, force_rdap=True
+                    ).rdap_data
                     print_result(result)
                     if args.output:
                         filename = get_filename(args.output, domain)

@@ -6,6 +6,10 @@ Help this project by [Donation](DONATE.md)
 Changes log
 -----------
 
+### 1.2.1
+
+Switched from `setup.py` to `pyproject.toml`.
+
 ### 1.2.0
 
 Added ip-api.com API support.
