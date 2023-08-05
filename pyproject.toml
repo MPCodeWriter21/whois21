@@ -37,6 +37,7 @@ Source = "https://github.com/MPCodeWriter21/whois21"
 dev = [
     "yapf>=0.40.1",
     "pylint>=2.17.4",
+    "isort>=5.12.0",
     "docformatter>=1.7.1"
 ]
 
