@@ -1,10 +1,19 @@
-PACKAGE_NAME
+Whois21
 =====
 
 Help this project by [Donation](DONATE.md)
 
 Changes log
 -----------
+
+### 1.3.0
+
++ Added the option to specify the encoding to use for encoding and decoding the data in 
+  in WHOIS class.
++ Added the option to customize the behavior of the WHOIS class when it encounters an 
+  error while encoding or decoding data.
++ Added the feature to automatically detect the encoding of _whois_ response to solve
+  decoding issues, such as the one mentioned in issue #2.
 
 ### 1.2.1
 

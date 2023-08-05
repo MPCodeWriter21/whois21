@@ -55,6 +55,8 @@ python -m build .
     - Downloading RDAP information.
 + [importlib_resources](https://importlib-resources.readthedocs.io/en/latest/): Used for:
     - Getting the path to the whois21 package installation directory(for saving server lists).
++ [chardet](https://pypi.org/project/chardet/): Used for:
+    - Detecting the encoding of the whois response.
 + [log21](https://github.com/MPCodeWriter21/log21): Used for:
     - Colorized Logging.
     - Printing collected data in pprint or tree format.
@@ -80,9 +82,15 @@ python -m build .
 Changes
 -------
 
-### 1.2.1
+### 1.3.0
 
-Switched from `setup.py` to `pyproject.toml`.
++ Added the option to specify the encoding to use for encoding and decoding the data in 
+  in WHOIS class.
++ Added the option to customize the behavior of the WHOIS class when it encounters an 
+  error while encoding or decoding data.
++ Added the feature to automatically detect the encoding of _whois_ response to solve
+  decoding issues, such as the one mentioned in issue #2. This is done with the help of
+  [chardet](https://pypi.org/project/chardet/) package.
 
 Usage Examples:
 ---------------
