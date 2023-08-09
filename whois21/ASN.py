@@ -2,58 +2,71 @@
 
 import os
 import json
-
-from typing import Union, List
-from ipaddress import ip_address
+from typing import List, Union, Optional
 
 import log21
 import requests
 import importlib_resources
 
-__all__ = ['download_asn_json', 'get_asn_dict', 'Service', 'get_asn_services', 'ip_registration_data_lookup_',
-           'ip_registration_data_lookup', 'validate_ip']
+__all__ = [
+    'validate_asn', 'download_asn_json', 'get_asn_dict', 'Service', 'get_asn_services',
+    'asn_registration_data_lookup_', 'asn_registration_data_lookup'
+]
 
 
-def validate_ip(ip: str):
+def validate_asn(asn: Union[int, str]) -> Union[int, bool]:
+    """Validates an Autonomous System Number.
+
+    :param asn: The ASN to validate.
+    :return: An integer if the ASN is valid, False if not.
     """
-    Validates an ip.
 
-    :param ip: The ip to validate.
-    :return: True if the ip is valid, False otherwise.
-    """
-    try:
-        ip_address(ip)
-        return True
-    except ValueError:
-        return False
+    if isinstance(asn, int):
+        return asn
+    if isinstance(asn, str):
+        try:
+            if asn.startswith('AS'):
+                return int(asn[2:])
+            return int(asn)
+        except ValueError:
+            return False
+    return False
 
 
-def download_asn_json(save_path: Union[str, os.PathLike] = None) -> str:
-    """
-    Downloads the asn.json file containing the RDAP bootstrap file for Autonomous System Number allocations from
-    https://data.iana.org/rdap/asn.json.
+def download_asn_json(
+    *, save_path: Optional[Union[str, os.PathLike]] = None, timeout: int = 10
+) -> str:
+    """Downloads the asn.json file containing the RDAP bootstrap file for Autonomous
+    System Number allocations from data.iana.org/rdap/asn.json.
 
-    :param save_path: The path to save the file to(default: site-packages/whois21/asn.json).
+    :param save_path: The path to save the file to(default: site-
+        packages/whois21/asn.json).
+    :param timeout: The timeout for the request.
     :return: The path to the downloaded file.
     """
 
     if not save_path:
-        save_path = importlib_resources.files('whois21') / 'asn.json'
+        save_path = str(importlib_resources.files('whois21') / 'asn.json')
 
     if not os.path.exists(save_path):
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
     log21.debug(f'Downloading asn.json file to {save_path}.')
 
-    with open(save_path, 'wb') as f:
-        f.write(requests.get('https://data.iana.org/rdap/asn.json').content)
+    with open(save_path, 'wb') as file:
+        file.write(
+            requests.get('https://data.iana.org/rdap/asn.json', timeout=timeout).content
+        )
 
     return str(save_path)
 
 
-def get_asn_dict(force_download: bool = False, path: Union[str, os.PathLike] = None) -> dict:
-    """
-    Returns a dictionary of the asn.json file.
+def get_asn_dict(
+    *,
+    force_download: bool = False,
+    path: Optional[Union[str, os.PathLike]] = None
+) -> dict:
+    """Returns a dictionary of the asn.json file.
 
     :param force_download: If True, the asn.json file will be downloaded again.
     :param path: The path to the asn.json file.
@@ -61,33 +74,47 @@ def get_asn_dict(force_download: bool = False, path: Union[str, os.PathLike] = N
     """
 
     if not path:
-        path = importlib_resources.files('whois21') / 'asn.json'
+        path = str(importlib_resources.files('whois21') / 'asn.json')
 
     if not os.path.exists(path) or force_download:
-        download_asn_json(path)
+        download_asn_json(save_path=path)
 
-    with open(path, 'r') as f:
-        return json.load(f)
+    if os.stat(path).st_size == 0:
+        download_asn_json(save_path=path)
+
+    with open(path, 'r', encoding='utf-8') as file:
+        return json.load(file)
 
 
 class Service:
-    ranges: List[range]
-    addresses: List[str]
+    """A class representing a service.
+
+    A service contains a list of ranges of AS numbers and a list RDAP URLs for those
+    ranges.
+    """
 
     def __init__(self, service: List[List[str]]):
+        """Initializes the Service class.
+
+        :param service: A list of lists of string representing the service.
+        """
         if not isinstance(service, List):
             raise TypeError('`service` must be a List.')
         if len(service) != 2:
             raise ValueError('`service` must be a List containing 2 lists of string.')
-        self.__ranges: List[range] = [range(*map(int, range_.split('-'))) for range_ in service[0]]
+        self.__ranges: List[range] = [
+            range(*map(int, range_.split('-'))) for range_ in service[0]
+        ]
         self.__addresses: List[str] = service[1]
 
     @property
     def ranges(self) -> List[range]:
+        """Returns a list of ranges."""
         return self.__ranges
 
     @property
     def addresses(self) -> List[str]:
+        """Returns a list of addresses."""
         return self.__addresses
 
     def __iter__(self):
@@ -99,35 +126,38 @@ class Service:
         return f'Service(ranges={self.__ranges}, addresses={self.__addresses})'
 
 
-def get_asn_services(force_download: bool = False, path: Union[str, os.PathLike] = None) -> \
-        List[Service]:
-    """
-    Returns the list of services in the asn.json file.
+def get_asn_services(
+    force_download: bool = False,
+    path: Optional[Union[str, os.PathLike]] = None
+) -> List[Service]:
+    """Returns the list of services present in the asn.json file.
 
     :param force_download: If True, the asn.json file will be downloaded again.
     :param path: The path to the asn.json file.
     :return: The list of services in the asn.json file.
     """
-    asn = get_asn_dict(force_download, path)
+    asn = get_asn_dict(force_download=force_download, path=path)
     return [Service(service) for service in asn.get('services', [])]
 
 
-def ip_registration_data_lookup_(ip: str, timeout: int = 10) -> List[dict]:
-    """
-    Gets an ip's RDAP information from registry operators and/or registrars in real-time.
+def asn_registration_data_lookup_(asn: Union[int, str],
+                                  timeout: int = 10) -> List[dict]:
+    """Gets an Autonomous System Number (ASN) registration data from the RDAP service.
 
-    :param ip: The ip to lookup.
+    :param asn: The AS Number to lookup.
     :param timeout: The timeout for the request.
     :return: A list of dictionaries containing the RDAP information.
     """
-    if not validate_ip(ip):
-        raise ValueError('`ip` must be a valid ip address.')
 
-    rdaps = list()
+    try:
+        asn = int(asn)
+    except ValueError:
+        raise ValueError('`asn` must be an integer!') from None
+
+    rdaps = []
 
     def get_rdap(url: str):
-        """
-        Gets the RDAP information from a link.
+        """Gets the RDAP information from a link.
 
         :param url: The url to get the RDAP information from.
         :return:
@@ -139,38 +169,43 @@ def ip_registration_data_lookup_(ip: str, timeout: int = 10) -> List[dict]:
 
         response = requests.get(url, timeout=timeout)
         response_json = response.json()
-        if response.status_code == 200 and (not response_json.get('errorCode') and not response_json.get('error')):
+        if response.status_code == 200 and (not response_json.get('errorCode')
+                                            and not response_json.get('error')):
             if response_json not in rdaps:
                 rdaps.append(response_json)
 
                 # Checks if there is another RDAP link that might have more information.
                 for link in response_json.get('links', []):
-                    if link.get('rel') != 'self' and link.get('type') == 'application/rdap+json':
+                    if link.get('rel') != 'self' and link.get(
+                            'type') == 'application/rdap+json':
                         get_rdap(link.get('href'))
 
     for service in get_asn_services():
-        for service_url in service.addresses:
-            try:
-                get_rdap(os.path.join(service_url, 'ip/', ip))
-            except Exception as e:
-                log21.debug(f'Error getting RDAP information from {service_url}: {e.__class__.__name__}: {e}')
+        for range_ in service.ranges:
+            if asn in range_:
+                for service_url in service.addresses:
+                    try:
+                        get_rdap(os.path.join(service_url, 'autnum/', str(asn)))
+                    except Exception as ex:  # pylint: disable=broad-except
+                        log21.debug(
+                            f'Error getting RDAP information from {service_url}:'
+                            f' {ex.__class__.__name__}: {ex}'
+                        )
 
     return rdaps
 
 
-def ip_registration_data_lookup(ip: str, timeout: int = 10) -> dict:
-    """
-    Gets an ip's RDAP information from registry operators and/or registrars in real-time.
+def asn_registration_data_lookup(asn: Union[int, str], timeout: int = 10) -> dict:
+    """Gets an ASN's registration data from the RDAP service.
 
-    :param ip: The ip to lookup.
+    :param asn: The ASN to get the registration data for.
     :param timeout: The timeout for the request.
     :return: A dictionary containing the registration data.
     """
-    info = dict()
+    info = {}
 
     def add_info(info_, key_, data: Union[dict, list]):
-        """
-        Adds information to the info dictionary.
+        """Adds information to the info dictionary.
 
         :param info_: The info dictionary.
         :param key_: The key to add the data to.
@@ -182,9 +217,9 @@ def ip_registration_data_lookup(ip: str, timeout: int = 10) -> dict:
                 part = info_[key_]
             else:
                 if isinstance(data, dict):
-                    part = info_[key_] = dict()
+                    part = info_[key_] = []
                 elif isinstance(data, list):
-                    part = info_[key_] = list()
+                    part = info_[key_] = []
                 else:
                     raise TypeError('data must be a dict or list')
         else:
@@ -209,7 +244,7 @@ def ip_registration_data_lookup(ip: str, timeout: int = 10) -> dict:
                 # Throw it away
                 pass
 
-    rdaps = ip_registration_data_lookup_(ip, timeout)
+    rdaps = asn_registration_data_lookup_(asn, timeout)
 
     for rdap in rdaps:
         rdap.pop('links', None)

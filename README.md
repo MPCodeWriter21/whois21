@@ -82,15 +82,12 @@ python -m build .
 Changes
 -------
 
-### 1.3.0
+### 1.4.0
 
-+ Added the option to specify the encoding to use for encoding and decoding the data in 
-  in WHOIS class.
-+ Added the option to customize the behavior of the WHOIS class when it encounters an 
-  error while encoding or decoding data.
-+ Added the feature to automatically detect the encoding of _whois_ response to solve
-  decoding issues, such as the one mentioned in issue #2. This is done with the help of
-  [chardet](https://pypi.org/project/chardet/) package.
++ Added IP module and fixed some issues with IP and ASN registration data lookup.
++ Modified the functions responsible for getting json data to download the data if the 
+  file exists but is empty.
++ Fixed minor bugs.
 
 Usage Examples:
 ---------------
@@ -198,6 +195,8 @@ References
   Wikipedia): [https://en.wikipedia.org/wiki/Registration_Data_Access_Protocol](https://en.wikipedia.org/wiki/Registration_Data_Access_Protocol)
 + RDAP Response Profile (
   PDF): [https://www.icann.org/en/system/files/files/rdap-response-profile-15feb19-en.pdf](https://www.icann.org/en/system/files/files/rdap-response-profile-15feb19-en.pdf)
++ RFC 9224 Finding the Authoritative Registration Data Access Protocol (RDAP) Service 
+  [https://www.rfc-editor.org/rfc/rfc9224.html](https://www.rfc-editor.org/rfc/rfc9224.html)
 + Registration Data Access Protocol (RDAP) Query
   Format: [https://www.rfc-editor.org/rfc/rfc7482.html](https://www.rfc-editor.org/rfc/rfc7482.html)
 + Registration Data Access Protocol (RDAP) Object

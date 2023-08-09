@@ -6,6 +6,13 @@ Help this project by [Donation](DONATE.md)
 Changes log
 -----------
 
+### 1.4.0
+
++ Added IP module and fixed some issues with IP and ASN registration data lookup.
++ Modified the functions responsible for getting json data to download the data if the 
+  file exists but is empty.
++ Fixed minor bugs.
+
 ### 1.3.0
 
 + Added the option to specify the encoding to use for encoding and decoding the data in 

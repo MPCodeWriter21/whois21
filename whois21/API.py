@@ -5,16 +5,21 @@ from typing import Union, Sequence
 import log21
 import requests
 
-from .ASN import validate_ip
+from .IP import validate_ip
 
 
-def lookup_ip_ip_api(ip: str, fields: Union[Sequence[str], str] = '61439', lang: str = 'en', timeout: int = 10) -> dict:
-    """
-    Looks up an ip using ip-api.com.
+def lookup_ip_ip_api(
+    ip: str,
+    fields: Union[Sequence[str], str] = '61439',
+    lang: str = 'en',
+    timeout: int = 10
+) -> dict:
+    """Looks up an ip using `ip-api.com`.
 
     :param ip: The ip or domain to look up.
-    :param fields: The fields to return. See https://ip-api.com/docs/api:json for more info.
-    :param lang: The language to return the data in. See https://ip-api.com/docs/api:json for more info.
+    :param fields: The fields to return. See `ip-api.com/docs/api%3ajson` for more info.
+    :param lang: The language to return the data in. See `ip-api.com/docs/api%3ajson`
+        for more info.
     :param timeout: The time-out for the request.
     :return: A dictionary containing the data.
     """
@@ -27,17 +32,24 @@ def lookup_ip_ip_api(ip: str, fields: Union[Sequence[str], str] = '61439', lang:
 
     log21.debug(f'Looking up {ip} using ip-api.com.')
 
-    return requests.get(f'http://ip-api.com/json/{ip}?fields={fields}&lang={lang}', timeout=timeout).json()
+    return requests.get(
+        f'http://ip-api.com/json/{ip}?fields={fields}&lang={lang}', timeout=timeout
+    ).json()
 
 
-def batch_lookup_ip_ip_api(ips: Sequence[str], fields: Union[Sequence[str], str] = '61439', lang: str = 'en',
-                           timeout: int = 10) -> dict:
-    """
-    Looks up multiple ips using ip-api.com.
+def batch_lookup_ip_ip_api(
+    ips: Sequence[str],
+    fields: Union[Sequence[str], str] = '61439',
+    lang: str = 'en',
+    timeout: int = 10
+) -> dict:
+    """Looks up multiple ips using `ip-api.com`.
 
     :param ips: The ips to look up.
-    :param fields: The fields to return. See https://ip-api.com/docs/api:batch for more info.
-    :param lang: The language to return the data in. See https://ip-api.com/docs/api:batch for more info.
+    :param fields: The fields to return. See `ip-api.com/docs/api%3abatch` for more
+        info.
+    :param lang: The language to return the data in. See `ip-api.com/docs/api%3abatch`
+        for more info.
     :param timeout: The time-out for the request.
     :return: A dictionary containing the data.
     """
@@ -60,4 +72,8 @@ def batch_lookup_ip_ip_api(ips: Sequence[str], fields: Union[Sequence[str], str]
 
     log21.debug(f'Looking up {ips} using ip-api.com.')
 
-    return requests.get(f'http://ip-api.com/batch?fields={fields}&lang={lang}', json=ips, timeout=timeout).json()
+    return requests.get(
+        f'http://ip-api.com/batch?fields={fields}&lang={lang}',
+        json=ips,
+        timeout=timeout
+    ).json()

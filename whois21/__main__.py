@@ -96,14 +96,8 @@ def main():
     if args.raw and args.ip_api:
         log21.warn('-R will not effect results from -i.')
 
-    # I did not want my IDE to tell me not to assign lambdas to variables so I did
-    # this:
-    # locals().update({'print_result': lambda *_, **__: None})
-    # The point is that this makes my IDE think that `print_result` function might be
-    # unbound...
-    # So you know what? I use the other idea I had(which I thought is too stupid to put
-    # here at first)
-    print_result = (lambda f: f)(lambda *_, **__: None)
+    # pylint: disable=unnecessary-lambda-assignment
+    print_result = lambda *_, **__: None  # noqa: E731
 
     if args.no_print:
         if not args.output:
@@ -134,7 +128,7 @@ def main():
                         print_result(result.whois_data)
                     if args.output:
                         filename = get_filename(args.output, domain, 'json')
-                        with open(filename, 'w') as file:
+                        with open(filename, 'w', encoding='utf-8') as file:
                             json.dump(result.whois_data, file, indent=4)
                         log21.info(f'Saved whois data to {filename}.')
                 elif result.error:
@@ -149,7 +143,7 @@ def main():
                     print_result(result)
                     if args.output:
                         filename = get_filename(args.output, domain)
-                        with open(filename, 'w') as file:
+                        with open(filename, 'w', encoding='utf-8') as file:
                             json.dump(result, file, indent=4)
                         log21.info(f'Saved registration data to {filename}.')
             elif args.registration_data:
@@ -161,7 +155,7 @@ def main():
                     print_result(result)
                     if args.output:
                         filename = get_filename(args.output, domain)
-                        with open(filename, 'w') as file:
+                        with open(filename, 'w', encoding='utf-8') as file:
                             json.dump(result, file, indent=4)
                         log21.info(f'Saved registration data to {filename}.')
             else:
@@ -171,7 +165,7 @@ def main():
                     print_result(result)
                     if args.output:
                         filename = get_filename(args.output, domain)
-                        with open(filename, 'w') as file:
+                        with open(filename, 'w', encoding='utf-8') as file:
                             json.dump(result, file, indent=4)
                         log21.info(f'Saved whois data to {filename}.')
     else:
@@ -179,6 +173,7 @@ def main():
 
 
 def run():
+    """Run the program and handle keyboard interrupts."""""
     try:
         main()
     except KeyboardInterrupt:

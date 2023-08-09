@@ -4,7 +4,7 @@ import os
 import re
 import json
 import socket
-from typing import Set, Union, Optional, Sequence
+from typing import Any, Set, Dict, Tuple, Union, Optional, Sequence
 from datetime import datetime
 
 import log21
@@ -12,14 +12,18 @@ import chardet
 import requests
 import importlib_resources
 
+from whois21.IP import (validate_ip, get_ipv4_services, get_ipv6_services,
+                        download_ipv4_json, download_ipv6_json,
+                        ip_registration_data_lookup, ip_registration_data_lookup_)
 from whois21.API import lookup_ip_ip_api, batch_lookup_ip_ip_api
-from whois21.ASN import (validate_ip, get_asn_dict, get_asn_services, download_asn_json,
-                         ip_registration_data_lookup, ip_registration_data_lookup_)
+from whois21.ASN import (get_asn_dict, validate_asn, get_asn_services,
+                         download_asn_json, asn_registration_data_lookup,
+                         asn_registration_data_lookup_)
 from whois21.DNS import (get_dns_dict, get_dns_services, download_dns_json,
                          domain_registration_data_lookup,
                          domain_registration_data_lookup_)
 
-__version__ = '1.3.0'
+__version__ = '1.4.0'
 __github__ = 'https://github.com/MPCodeWriter21/whois21'
 __author__ = 'CodeWriter21'
 __email__ = 'CodeWriter21@gmail.com'
@@ -27,12 +31,14 @@ __license__ = 'Apache License 2.0'
 
 __all__ = [
     '__version__', '__github__', '__author__', '__email__', '__license__',
-    'download_asn_json', 'get_asn_dict', 'get_asn_services',
-    'ip_registration_data_lookup_', 'ip_registration_data_lookup', 'download_dns_json',
-    'get_dns_dict', 'get_dns_services', 'domain_registration_data_lookup_',
-    'domain_registration_data_lookup', 'validate_ip', 'WHOIS',
-    'registration_data_lookup', 'get_whois_servers', 'whois_servers', 'vcard_map',
-    'lookup_ip_ip_api', 'batch_lookup_ip_ip_api'
+    'validate_asn', 'download_asn_json', 'get_asn_dict', 'get_asn_services',
+    'asn_registration_data_lookup_', 'asn_registration_data_lookup',
+    'download_ipv4_json', 'download_ipv6_json', 'get_ipv4_services',
+    'get_ipv6_services', 'ip_registration_data_lookup_', 'ip_registration_data_lookup',
+    'download_dns_json', 'get_dns_dict', 'get_dns_services',
+    'domain_registration_data_lookup_', 'domain_registration_data_lookup',
+    'validate_ip', 'WHOIS', 'registration_data_lookup', 'get_whois_servers',
+    'whois_servers', 'vcard_map', 'lookup_ip_ip_api', 'batch_lookup_ip_ip_api'
 ]
 
 LRED = log21.get_color('Light Red')
@@ -46,11 +52,14 @@ CYAN = log21.get_color('Cyan')
 RESET = log21.get_color('Reset')
 
 
-def download_whois_servers(path: Optional[Union[str, os.PathLike]] = None) -> str:
+def download_whois_servers(
+    *, path: Optional[Union[str, os.PathLike]] = None, timeout: int = 10
+) -> str:
     """Downloads the whois whois-servers.txt file from
     https://www.nirsoft.net/whois-servers.txt.
 
     :param path: The path to the whois file.
+    :param timeout: The timeout for the request.
     :return: The path to the downloaded file.
     """
     if not path:
@@ -64,18 +73,20 @@ def download_whois_servers(path: Optional[Union[str, os.PathLike]] = None) -> st
     )
 
     with open(path, 'wb') as file:
-        file.write(requests.get('https://www.nirsoft.net/whois-servers.txt').content)
+        file.write(
+            requests.get('https://www.nirsoft.net/whois-servers.txt',
+                         timeout=timeout).content
+        )
 
     return str(path)
 
 
 def get_whois_servers(
-    force_download: bool = False, path: Optional[Union[str, os.PathLike]] = None
+    *, force_download: bool = False, path: Optional[Union[str, os.PathLike]] = None
 ):
     """Returns a dictionary of the whois-servers.txt file.
 
-    :param force_download: If True, the whois-servers.txt file will be
-        downloaded again.
+    :param force_download: If True, the whois-servers.txt file will be downloaded again.
     :param path: The path to the whois-servers.txt file.
     :return: A dictionary of the whois-servers.txt file.
     """
@@ -83,7 +94,10 @@ def get_whois_servers(
         path = str(importlib_resources.files('whois21') / 'whois-servers.txt')
 
     if not os.path.exists(path) or force_download:
-        download_whois_servers(path)
+        download_whois_servers(path=path)
+
+    if os.stat(path).st_size == 0:
+        download_whois_servers(path=path)
 
     data = {}
     with open(path, 'r', encoding='utf-8') as file:
@@ -155,10 +169,11 @@ with open(str(importlib_resources.files('whois21') / 'vcard-map.json'), 'r',
     vcard_map = json.load(f)
 
 
-class WHOIS:
+class WHOIS:  # pylint: disable=too-many-instance-attributes
+    """WHOIS client."""
     __domain: str
     __success: bool = False
-    __error: str = ''
+    __error: Optional[Tuple[str, Optional[Exception]]] = None
     __raw: bytes = b''
     __servers: Set[str] = set()
     __whois_data: dict = {}
@@ -186,12 +201,9 @@ class WHOIS:
         :param timeout: Timeout in seconds. (default: 10)
         :param use_rdap: Use RDAP if available and WHOIS fails.
         :param force_rdap: Force RDAP usage.
-        :param encode_encoding: Encoding to use for encoding. (default:
-            utf-8)
-        :param decode_encoding: Encoding to use for decoding. (default:
-            AUTODETECT)
-        :param encoding_errors: Encoding error handling. (default:
-            strict)
+        :param encode_encoding: Encoding to use for encoding. (default: utf-8)
+        :param decode_encoding: Encoding to use for decoding. (default: AUTODETECT)
+        :param encoding_errors: Encoding error handling. (default: strict)
         """
         self.registry_domain_id = None
         self.registrar_whois_server = None
@@ -234,23 +246,20 @@ class WHOIS:
         :param domain: The domain/ip to query.
         :param servers: The servers to use.
         :param timeout: The timeout in seconds.
-        :param use_rdap: If True, the RDAP server will be used if the
-            whois servers don't respond.
-        :param force_rdap: If True, the RDAP server will be used even if
-            the whois servers respond.
-        :param encode_encoding: Encoding to use for encoding. (default:
-            utf-8)
-        :param decode_encoding: Encoding to use for decoding. (default:
-            AUTODETECT)
-        :param encoding_errors: How to handle encoding errors. (default:
-            strict)
+        :param use_rdap: If True, the RDAP server will be used if the whois servers
+            don't respond.
+        :param force_rdap: If True, the RDAP server will be used even if the whois
+            servers respond.
+        :param encode_encoding: Encoding to use for encoding. (default: utf-8)
+        :param decode_encoding: Encoding to use for decoding. (default: AUTODETECT)
+        :param encoding_errors: How to handle encoding errors. (default: strict)
         """
-        self.__domain = domain.lower()
+        self.__domain = domain.lower() if domain else self.__domain
         self.__success = False
         self.__servers = set(servers) if servers else set()
         self.__whois_data = {}
         self.timeout = timeout
-        self.__error = ''
+        self.__error = None
         self.__raw = b''
         self.__encode_encoding = encode_encoding
         self.__decode_encoding = decode_encoding
@@ -316,7 +325,7 @@ class WHOIS:
             self.__get_whois_server_for_tld()
 
         if not self.__servers:
-            self.__error = 'No whois servers found.'
+            self.__error = ('No whois servers found.', None)
             log21.debug('No whois servers found.')
             return
 
@@ -328,7 +337,7 @@ class WHOIS:
             return
 
         self.__success = True
-        self.__error = ''
+        self.__error = None
         log21.debug(f'{LGREEN}WHOIS data successfully parsed.{RESET}')
 
     def __whois_iana(self):
@@ -346,14 +355,14 @@ class WHOIS:
             )
             self.__error = (
                 'Error connecting "to whois.iana.org:43": '
-                f'{ex.__class__.__name__}: {ex}'
+                f'{ex.__class__.__name__}: {ex}', ex
             )
             return
         # Send the domain name to the whois.iana.org server.
         log21.debug(f'Sending query for {LCYAN}{self.domain}{RESET}...')
         try:
             sock.send(
-                self.domain
+                str(self.domain)
                 .encode(self.__encode_encoding, errors=self.__encoding_errors) + b'\r\n'
             )
         except socket.error as ex:
@@ -363,7 +372,7 @@ class WHOIS:
             )
             self.__error = (
                 'Error sending query to "whois.iana.org:43": '
-                f'{ex.__class__.__name__}: {ex}'
+                f'{ex.__class__.__name__}: {ex}', ex
             )
             return
         # Receive the raw data from the whois.iana.org server.
@@ -382,7 +391,7 @@ class WHOIS:
             )
             self.__error = (
                 'Error receiving data from "whois.iana.org:43": '
-                f'{ex.__class__.__name__}: {ex}'
+                f'{ex.__class__.__name__}: {ex}', ex
             )
             return
         sock.close()
@@ -390,7 +399,7 @@ class WHOIS:
         # Checks if we received any data from the whois.iana.org server.
         if not self.__raw:
             log21.debug(f'{LRED}No data received.{RESET}')
-            self.__error = 'No data received from whois.iana.org.'
+            self.__error = ('No data received from whois.iana.org.', None)
             return
 
         log21.debug('Parsing data: Searching for whois server...')
@@ -403,17 +412,19 @@ class WHOIS:
                 break
         else:
             log21.debug(f'{LRED}No whois server found.{RESET}')
-            self.__error = 'No whois server found.'
+            self.__error = ('No whois server found.', None)
             log21.debug('Trying to get another whois server...')
             self.__get_whois_server_for_tld()
-            self.__error = ''
+            self.__error = None
 
     def __get_whois_server_for_tld(self):
-        tld = self.domain.split('.')[-1]
+        if isinstance(self.domain, int):
+            self.__servers.update((whois_servers['LNICHOST'], 'whois.arin.net'))
+            return
+        tld = str(self.domain).split('.')[-1]
         if tld.isdigit():
-            self.__whois_server = 'whois.arin.net'
             if validate_ip(self.domain):
-                self.__servers.add(whois_servers['LNICHOST'])
+                self.__servers.update((whois_servers['LNICHOST'], 'whois.arin.net'))
         else:
             if tld in whois_servers:
                 self.__servers.update(whois_servers[tld])
@@ -437,14 +448,14 @@ class WHOIS:
                 )
                 self.__error = (
                     f'Error connecting to "{whois_server}": '
-                    f'{ex.__class__.__name__}: {ex}'
+                    f'{ex.__class__.__name__}: {ex}', ex
                 )
                 continue
             # Send the domain name to the whois server.
             log21.debug(f'Sending query for {LCYAN}{self.domain}{RESET}...')
             try:
                 sock.send(
-                    self.domain
+                    str(self.domain)
                     .encode(self.__encode_encoding, errors=self.__encoding_errors) +
                     b'\r\n'
                 )
@@ -455,7 +466,7 @@ class WHOIS:
                 )
                 self.__error = (
                     f'Error sending query to "{whois_server}": '
-                    f'{ex.__class__.__name__}: {ex}'
+                    f'{ex.__class__.__name__}: {ex}', ex
                 )
                 continue
             # Receive the raw whois data from the whois server.
@@ -474,7 +485,7 @@ class WHOIS:
                 )
                 self.__error = (
                     f'Error receiving data from "{whois_server}": '
-                    f'{ex.__class__.__name__}: {ex}'
+                    f'{ex.__class__.__name__}: {ex}', ex
                 )
                 continue
             sock.close()
@@ -482,7 +493,7 @@ class WHOIS:
             # Checks if we received any data from the whois server.
             if not self.__raw:
                 log21.debug(f'No data received from {RED}{whois_server}{RESET}.')
-                self.__error = f'No data received from {whois_server}.'
+                self.__error = (f'No data received from {whois_server}.', None)
                 continue
             # Parse the raw whois data from the whois server and extract the whois
             # information.
@@ -522,16 +533,16 @@ class WHOIS:
 
             if not self.__whois_data:
                 log21.debug(f'{LRED}No data found.{RESET}')
-                self.__error = 'No whois data found.'
+                self.__error = ('No whois data found.', None)
                 continue
 
             # Check if the whois server returned any error messages.
             if 'ERROR' in self.__whois_data or 'WHOIS ERROR' in self.__whois_data:
                 log21.debug(f'{LRED}Error{RESET} found in whois data.')
-                self.__error = 'Error found in whois data.'
+                self.__error = ('Error found in whois data.', None)
                 continue
 
-            self.__error = ''
+            self.__error = None
             return
 
     def __rdap(self):
@@ -546,27 +557,26 @@ class WHOIS:
             )
             self.__error = (
                 'Error getting rdap information: '
-                f'{ex.__class__.__name__}: {ex}'
+                f'{ex.__class__.__name__}: {ex}', ex
             )
             return
 
         if not self.__rdap_data:
             log21.debug(f'{LRED}No data found.{RESET}')
-            self.__error = 'No rdap data found.'
+            self.__error = ('No rdap data found.', None)
             return
 
         # Check if the rdap server returned any error messages.
         if 'error' in self.__rdap_data:
             log21.debug(f'{LRED}Error{RESET} found in rdap data.')
-            self.__error = 'Error found in rdap data.'
+            self.__error = ('Error found in rdap data.', None)
             return
 
         self.__parse_rdap_data()
         return
 
     def __parse_rdap_data(self):
-        """Parses the RDAP data and puts some information in whois_data
-        dictionary."""
+        """Parses the RDAP data and puts some information in whois_data dictionary."""
 
         # Parse the rdap data and extract the whois information.
         log21.debug('Parsing rdap data...')
@@ -669,37 +679,47 @@ class WHOIS:
         for entity in self.__rdap_data.get('entities', []):
             handle_entity('', entity)
 
-    def __get_decode_encoding(self, data):
+        self.__success = True
+
+    def __get_decode_encoding(self, data) -> str:
         if self.__decode_encoding:
             return self.__decode_encoding
-        return chardet.detect(data)['encoding']
+        encoding = chardet.detect(data)['encoding']
+        return encoding if encoding else 'utf-8'
 
     @property
-    def whois_data(self):
+    def whois_data(self) -> Dict[str, Any]:
+        """A dictionary containing the parsed WHOIS data."""
         return self.__whois_data
 
     @property
-    def rdap_data(self):
+    def rdap_data(self) -> Dict[str, Any]:
+        """A dictionary containing the parsed RDAP data."""
         return self.__rdap_data
 
     @property
-    def servers(self):
+    def servers(self) -> Set[str]:
+        """A set of WHOIS servers that were queried."""
         return self.__servers
 
     @property
-    def raw(self):
+    def raw(self) -> bytes:
+        """A bytes object containing the raw WHOIS data."""
         return self.__raw
 
     @property
-    def domain(self):
+    def domain(self) -> Union[str, int]:
+        """The domain/ip/asn that was queried."""
         return self.__domain
 
     @property
-    def success(self):
+    def success(self) -> bool:
+        """A boolean indicating whether the query was successful."""
         return self.__success
 
     @property
-    def error(self):
+    def error(self) -> Optional[Tuple[str, Optional[Exception]]]:
+        """A tuple containing the error message and exception (if any)."""
         return self.__error
 
     def __str__(self):
@@ -711,20 +731,25 @@ class WHOIS:
         return f'WHOIS(domain="{self.__domain}", success={self.__success})'
 
     def get(self, key: str, default=None):
+        """Get a value from the parsed WHOIS data."""
         return self.__whois_data.get(key.upper(), default)
 
     def __getitem__(self, key: str):
         return self.__whois_data[key.upper()]
 
 
-def registration_data_lookup(domain: str, timeout: int = 10) -> dict:
-    """Lookup the registration data for a domain/ip.
+def registration_data_lookup(domain: Union[str, int], timeout: int = 10) -> dict:
+    """Lookup the registration data for a Domain Name/IP Address/AS Number.
 
-    :param domain: The domain/ip to lookup.
+    :param domain: The domain/ip/ans to lookup.
     :param timeout: The timeout for the socket connection.
     :return: A WHOIS object.
     """
     if validate_ip(domain):
         return ip_registration_data_lookup(domain, timeout)
-    else:
-        return domain_registration_data_lookup(domain, timeout)
+    if validate_asn(domain):
+        return asn_registration_data_lookup(domain, timeout)
+    # If the `domain` variable is an isinstance of int then it would have passed the
+    # `validate_asn` check and the function would have returned. Therefore, we can
+    # assume that the `domain` variable is an isinstance of str.
+    return domain_registration_data_lookup(domain, timeout)  # type: ignore
