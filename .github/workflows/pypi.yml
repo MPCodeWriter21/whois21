@@ -1,6 +1,9 @@
 name: pypi
 
-on: push
+on:
+  push:
+    branches:
+      - "master"
 
 jobs:
   build-and-publish:
@@ -13,14 +16,25 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: '3.x'
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install build setuptools wheel
+
       - name: Build
         run: |
           python -m build
+
+      - name: check-version
+        uses: KyoriPowered/action-regex-match@v3
+        id: check-version
+        with:
+          text: ${{ env.PACKAGE_VERSION }}
+          regex: '\d+\.\d+\.\d+a\d+'
+
       - name: Publish
         uses: pypa/gh-action-pypi-publish@master
+        if: ${{ steps.check-version.outputs.match == '' }}  # If didn't match
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
