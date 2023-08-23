@@ -140,6 +140,33 @@ def get_asn_services(
     return [Service(service) for service in asn.get('services', [])]
 
 
+def _get_rdap(url: str, rdaps: List[dict], timeout: int = 10) -> None:
+    """Gets the RDAP information from a link.
+
+    :param url: The url to get the RDAP information from.
+    :param rdaps: The list to append the RDAP information to.
+    :param timeout: The timeout for the request.
+    :return:
+    """
+    if not url:
+        return
+
+    log21.debug(f'Getting domain registration data from {url}.')
+
+    response = requests.get(url, timeout=timeout)
+    response_json = response.json()
+    if response.status_code == 200 and (not response_json.get('errorCode')
+                                        and not response_json.get('error')):
+        if response_json not in rdaps:
+            rdaps.append(response_json)
+
+            # Checks if there is another RDAP link that might have more information.
+            for link in response_json.get('links', []):
+                if link.get('rel') != 'self' and link.get('type'
+                                                          ) == 'application/rdap+json':
+                    _get_rdap(link.get('href'), rdaps, timeout=timeout)
+
+
 def asn_registration_data_lookup_(asn: Union[int, str],
                                   timeout: int = 10) -> List[dict]:
     """Gets an Autonomous System Number (ASN) registration data from the RDAP service.
@@ -155,37 +182,16 @@ def asn_registration_data_lookup_(asn: Union[int, str],
         raise ValueError('`asn` must be an integer!') from None
 
     rdaps = []
-
-    def get_rdap(url: str):
-        """Gets the RDAP information from a link.
-
-        :param url: The url to get the RDAP information from.
-        :return:
-        """
-        if not url:
-            return
-
-        log21.debug(f'Getting domain registration data from {url}.')
-
-        response = requests.get(url, timeout=timeout)
-        response_json = response.json()
-        if response.status_code == 200 and (not response_json.get('errorCode')
-                                            and not response_json.get('error')):
-            if response_json not in rdaps:
-                rdaps.append(response_json)
-
-                # Checks if there is another RDAP link that might have more information.
-                for link in response_json.get('links', []):
-                    if link.get('rel') != 'self' and link.get(
-                            'type') == 'application/rdap+json':
-                        get_rdap(link.get('href'))
-
     for service in get_asn_services():
         for range_ in service.ranges:
             if asn in range_:
                 for service_url in service.addresses:
                     try:
-                        get_rdap(os.path.join(service_url, 'autnum/', str(asn)))
+                        _get_rdap(
+                            os.path.join(service_url, 'autnum/', str(asn)),
+                            rdaps,
+                            timeout=timeout
+                        )
                     except Exception as ex:  # pylint: disable=broad-except
                         log21.debug(
                             f'Error getting RDAP information from {service_url}:'
@@ -193,6 +199,47 @@ def asn_registration_data_lookup_(asn: Union[int, str],
                         )
 
     return rdaps
+
+
+def __add_info(info, key, data: Union[dict, list]):
+    """Adds information to the info dictionary.
+
+    :param info: The info dictionary.
+    :param key: The key to add the data to.
+    :param data: The data to add.
+    :return:
+    """
+    if key:
+        if key in info:
+            part = info[key]
+        else:
+            if isinstance(data, dict):
+                part = info[key] = []
+            elif isinstance(data, list):
+                part = info[key] = []
+            else:
+                raise TypeError('data must be a dict or list')
+    else:
+        part = info
+
+    if isinstance(data, dict):
+        for key_, value in data.items():
+            if key_ not in part:
+                part[key_] = value
+            else:
+                if isinstance(part[key_], list) and isinstance(value, list):
+                    __add_info(info, key_, value)
+                elif isinstance(part[key_], dict) and isinstance(value, dict):
+                    __add_info(info, key_, value)
+                else:
+                    # Throw it away
+                    pass
+    elif isinstance(data, list):
+        if isinstance(part, list):
+            part.extend(data)
+        else:
+            # Throw it away
+            pass
 
 
 def asn_registration_data_lookup(asn: Union[int, str], timeout: int = 10) -> dict:
@@ -204,50 +251,10 @@ def asn_registration_data_lookup(asn: Union[int, str], timeout: int = 10) -> dic
     """
     info = {}
 
-    def add_info(info_, key_, data: Union[dict, list]):
-        """Adds information to the info dictionary.
-
-        :param info_: The info dictionary.
-        :param key_: The key to add the data to.
-        :param data: The data to add.
-        :return:
-        """
-        if key_:
-            if key_ in info_:
-                part = info_[key_]
-            else:
-                if isinstance(data, dict):
-                    part = info_[key_] = []
-                elif isinstance(data, list):
-                    part = info_[key_] = []
-                else:
-                    raise TypeError('data must be a dict or list')
-        else:
-            part = info_
-
-        if isinstance(data, dict):
-            for key, value in data.items():
-                if key not in part:
-                    part[key] = value
-                else:
-                    if isinstance(part[key], list) and isinstance(value, list):
-                        add_info(info_, key, value)
-                    elif isinstance(part[key], dict) and isinstance(value, dict):
-                        add_info(info_, key, value)
-                    else:
-                        # Throw it away
-                        pass
-        elif isinstance(data, list):
-            if isinstance(part, list):
-                part.extend(data)
-            else:
-                # Throw it away
-                pass
-
     rdaps = asn_registration_data_lookup_(asn, timeout)
 
     for rdap in rdaps:
         rdap.pop('links', None)
-        add_info(info, None, rdap)
+        __add_info(info, None, rdap)
 
     return info

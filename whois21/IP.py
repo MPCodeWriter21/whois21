@@ -2,7 +2,7 @@
 
 import os
 import json
-from typing import List, Union, Optional
+from typing import Any, List, Union, Optional
 from ipaddress import IPv4Network, IPv6Network, ip_address, ip_network
 
 import log21
@@ -18,7 +18,7 @@ __all__ = [
 IPNetwork = Union[IPv4Network, IPv6Network]
 
 
-def validate_ip(ip: str):
+def validate_ip(ip: Union[str, Any]):
     """Validates an ip.
 
     :param ip: The ip to validate.
@@ -153,9 +153,7 @@ class Service:
             raise TypeError('`service` must be a List.')
         if len(service) != 2:
             raise ValueError('`service` must be a List containing 2 lists of string.')
-        self.__networks: List[IPNetwork] = [
-            ip_network(range_) for range_ in service[0]
-        ]
+        self.__networks: List[IPNetwork] = [ip_network(range_) for range_ in service[0]]
         self.__addresses: List[str] = service[1]
 
     @property
@@ -205,6 +203,33 @@ def get_ipv6_services(
     return [Service(service) for service in asn.get('services', [])]
 
 
+def _get_rdap(url: str, rdaps: List[dict], timeout: int = 10) -> None:
+    """Gets the RDAP information from a link.
+
+    :param url: The url to get the RDAP information from.
+    :param rdaps: The list to append the RDAP information to.
+    :param timeout: The timeout for the request.
+    :return:
+    """
+    if not url:
+        return
+
+    log21.debug(f'Getting domain registration data from {url}.')
+
+    response = requests.get(url, timeout=timeout)
+    response_json = response.json()
+    if response.status_code == 200 and (not response_json.get('errorCode')
+                                        and not response_json.get('error')):
+        if response_json not in rdaps:
+            rdaps.append(response_json)
+
+            # Checks if there is another RDAP link that might have more information.
+            for link in response_json.get('links', []):
+                if link.get('rel') != 'self' and link.get('type'
+                                                          ) == 'application/rdap+json':
+                    _get_rdap(link.get('href'), rdaps, timeout=timeout)
+
+
 def ip_registration_data_lookup_(ip: str, timeout: int = 10) -> List[dict]:
     """Gets an IP address's RDAP information from registry operators and/or registrars
     in real-time.
@@ -220,30 +245,6 @@ def ip_registration_data_lookup_(ip: str, timeout: int = 10) -> List[dict]:
 
     rdaps = []
 
-    def get_rdap(url: str):
-        """Gets the RDAP information from a link.
-
-        :param url: The url to get the RDAP information from.
-        :return:
-        """
-        if not url:
-            return
-
-        log21.debug(f'Getting domain registration data from {url}.')
-
-        response = requests.get(url, timeout=timeout)
-        response_json = response.json()
-        if response.status_code == 200 and (not response_json.get('errorCode')
-                                            and not response_json.get('error')):
-            if response_json not in rdaps:
-                rdaps.append(response_json)
-
-                # Checks if there is another RDAP link that might have more information.
-                for link in response_json.get('links', []):
-                    if link.get('rel') != 'self' and link.get(
-                            'type') == 'application/rdap+json':
-                        get_rdap(link.get('href'))
-
     if address.version == 4:
         services = get_ipv4_services()
     else:
@@ -254,7 +255,11 @@ def ip_registration_data_lookup_(ip: str, timeout: int = 10) -> List[dict]:
             if address in network:
                 for service_url in service.addresses:
                     try:
-                        get_rdap(os.path.join(service_url, 'ip/', ip))
+                        _get_rdap(
+                            os.path.join(service_url, 'ip/', ip),
+                            rdaps,
+                            timeout=timeout
+                        )
                     except Exception as ex:  # pylint: disable=broad-except
                         log21.debug(
                             f'Error getting RDAP information from {service_url}:'
@@ -264,7 +269,48 @@ def ip_registration_data_lookup_(ip: str, timeout: int = 10) -> List[dict]:
     return rdaps
 
 
-def ip_registration_data_lookup(ip: str, timeout: int = 10) -> dict:
+def __add_info(info, key, data: Union[dict, list]):
+    """Adds information to the info dictionary.
+
+    :param info: The info dictionary.
+    :param key: The key to add the data to.
+    :param data: The data to add.
+    :return:
+    """
+    if key:
+        if key in info:
+            part = info[key]
+        else:
+            if isinstance(data, dict):
+                part = info[key] = []
+            elif isinstance(data, list):
+                part = info[key] = []
+            else:
+                raise TypeError('data must be a dict or list')
+    else:
+        part = info
+
+    if isinstance(data, dict):
+        for key_, value in data.items():
+            if key_ not in part:
+                part[key_] = value
+            else:
+                if isinstance(part[key_], list) and isinstance(value, list):
+                    __add_info(info, key_, value)
+                elif isinstance(part[key_], dict) and isinstance(value, dict):
+                    __add_info(info, key_, value)
+                else:
+                    # Throw it away
+                    pass
+    elif isinstance(data, list):
+        if isinstance(part, list):
+            part.extend(data)
+        else:
+            # Throw it away
+            pass
+
+
+def ip_registration_data_lookup(ip: Union[str, Any], timeout: int = 10) -> dict:
     """Gets an IP address's RDAP information from registry operators and/or registrars
     in real-time.
 
@@ -274,50 +320,10 @@ def ip_registration_data_lookup(ip: str, timeout: int = 10) -> dict:
     """
     info = {}
 
-    def add_info(info_, key_, data: Union[dict, list]):
-        """Adds information to the info dictionary.
-
-        :param info_: The info dictionary.
-        :param key_: The key to add the data to.
-        :param data: The data to add.
-        :return:
-        """
-        if key_:
-            if key_ in info_:
-                part = info_[key_]
-            else:
-                if isinstance(data, dict):
-                    part = info_[key_] = []
-                elif isinstance(data, list):
-                    part = info_[key_] = []
-                else:
-                    raise TypeError('data must be a dict or list')
-        else:
-            part = info_
-
-        if isinstance(data, dict):
-            for key, value in data.items():
-                if key not in part:
-                    part[key] = value
-                else:
-                    if isinstance(part[key], list) and isinstance(value, list):
-                        add_info(info_, key, value)
-                    elif isinstance(part[key], dict) and isinstance(value, dict):
-                        add_info(info_, key, value)
-                    else:
-                        # Throw it away
-                        pass
-        elif isinstance(data, list):
-            if isinstance(part, list):
-                part.extend(data)
-            else:
-                # Throw it away
-                pass
-
     rdaps = ip_registration_data_lookup_(ip, timeout)
 
     for rdap in rdaps:
         rdap.pop('links', None)
-        add_info(info, None, rdap)
+        __add_info(info, None, rdap)
 
     return info

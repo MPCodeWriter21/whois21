@@ -23,7 +23,7 @@ from whois21.DNS import (get_dns_dict, get_dns_services, download_dns_json,
                          domain_registration_data_lookup,
                          domain_registration_data_lookup_)
 
-__version__ = '1.4.0'
+__version__ = '1.4.1'
 __github__ = 'https://github.com/MPCodeWriter21/whois21'
 __author__ = 'CodeWriter21'
 __email__ = 'CodeWriter21@gmail.com'
@@ -186,10 +186,12 @@ class WHOIS:  # pylint: disable=too-many-instance-attributes
     def __init__(
         self,
         domain: str,
+        *,
         servers: Optional[Sequence[str]] = None,
         timeout: int = 10,
         use_rdap: bool = True,
         force_rdap: bool = False,
+        run_whois: bool = True,
         encode_encoding: str = 'utf-8',
         decode_encoding: Optional[str] = None,
         encoding_errors: str = 'strict',
@@ -201,6 +203,7 @@ class WHOIS:  # pylint: disable=too-many-instance-attributes
         :param timeout: Timeout in seconds. (default: 10)
         :param use_rdap: Use RDAP if available and WHOIS fails.
         :param force_rdap: Force RDAP usage.
+        :param run_whois: Run WHOIS query. (default: True)
         :param encode_encoding: Encoding to use for encoding. (default: utf-8)
         :param decode_encoding: Encoding to use for decoding. (default: AUTODETECT)
         :param encoding_errors: Encoding error handling. (default: strict)
@@ -217,17 +220,28 @@ class WHOIS:  # pylint: disable=too-many-instance-attributes
         self.registrar_abuse_contact_phone = None
         self.status = None
         self.name_servers = None
+        self.__domain = domain.lower() if domain else self.__domain
+        self.__success = False
+        self.__servers = set(servers) if servers else set()
+        self.__whois_data = {}
+        self.timeout = timeout
+        self.__error = None
+        self.__raw = b''
+        self.__encode_encoding = encode_encoding
+        self.__decode_encoding = decode_encoding
+        self.__encoding_errors = encoding_errors
 
-        self.whois(
-            domain,
-            servers=servers,
-            timeout=timeout,
-            use_rdap=use_rdap,
-            force_rdap=force_rdap,
-            encode_encoding=encode_encoding,
-            decode_encoding=decode_encoding,
-            encoding_errors=encoding_errors,
-        )
+        if run_whois:
+            self.whois(
+                domain,
+                servers=servers,
+                timeout=timeout,
+                use_rdap=use_rdap,
+                force_rdap=force_rdap,
+                encode_encoding=encode_encoding,
+                decode_encoding=decode_encoding,
+                encoding_errors=encoding_errors,
+            )
 
     def whois(
         self,
@@ -362,8 +376,9 @@ class WHOIS:  # pylint: disable=too-many-instance-attributes
         log21.debug(f'Sending query for {LCYAN}{self.domain}{RESET}...')
         try:
             sock.send(
-                str(self.domain)
-                .encode(self.__encode_encoding, errors=self.__encoding_errors) + b'\r\n'
+                str(self.domain
+                    ).encode(self.__encode_encoding, errors=self.__encoding_errors) +
+                b'\r\n'
             )
         except socket.error as ex:
             log21.debug(
@@ -421,7 +436,7 @@ class WHOIS:  # pylint: disable=too-many-instance-attributes
         if isinstance(self.domain, int):
             self.__servers.update((whois_servers['LNICHOST'], 'whois.arin.net'))
             return
-        tld = str(self.domain).split('.')[-1]
+        tld = str(self.domain).rsplit('.', maxsplit=1)[-1]
         if tld.isdigit():
             if validate_ip(self.domain):
                 self.__servers.update((whois_servers['LNICHOST'], 'whois.arin.net'))
@@ -436,114 +451,131 @@ class WHOIS:  # pylint: disable=too-many-instance-attributes
     def __call_whois_servers(self):
         # Get the whois information for the domain.
         for whois_server in self.__servers:
-            # Create a socket connection to the whois server.
-            log21.debug(f'Connecting to {LBLUE}{whois_server}{RESET}...')
-            try:
-                sock = socket.create_connection((whois_server, 43))
-                sock.settimeout(self.timeout)
-            except socket.error as ex:
-                log21.debug(
-                    f'Error connecting to "{RED}{whois_server}{RESET}": '
-                    f'{LRED}{ex.__class__.__name__}: {ex}{RESET}'
-                )
-                self.__error = (
-                    f'Error connecting to "{whois_server}": '
-                    f'{ex.__class__.__name__}: {ex}', ex
-                )
-                continue
-            # Send the domain name to the whois server.
-            log21.debug(f'Sending query for {LCYAN}{self.domain}{RESET}...')
-            try:
-                sock.send(
-                    str(self.domain)
-                    .encode(self.__encode_encoding, errors=self.__encoding_errors) +
-                    b'\r\n'
-                )
-            except socket.error as ex:
-                log21.debug(
-                    f'Error sending query to "{RED}{whois_server}{RESET}": '
-                    f'{LRED}{ex.__class__.__name__}: {ex}{RESET}'
-                )
-                self.__error = (
-                    f'Error sending query to "{whois_server}": '
-                    f'{ex.__class__.__name__}: {ex}', ex
-                )
-                continue
-            # Receive the raw whois data from the whois server.
-            self.__raw = b''
-            log21.debug('Receiving data...')
-            try:
-                while True:
-                    data = sock.recv(4096)
-                    if not data:
-                        break
-                    self.__raw += data
-            except socket.error as ex:
-                log21.debug(
-                    f'Error receiving data from "{RED}{whois_server}{RESET}": '
-                    f'{LRED}{ex.__class__.__name__}: {ex}{RESET}'
-                )
-                self.__error = (
-                    f'Error receiving data from "{whois_server}": '
-                    f'{ex.__class__.__name__}: {ex}', ex
-                )
-                continue
-            sock.close()
+            if self.__call_whois_server(whois_server):
+                break
 
-            # Checks if we received any data from the whois server.
-            if not self.__raw:
-                log21.debug(f'No data received from {RED}{whois_server}{RESET}.')
-                self.__error = (f'No data received from {whois_server}.', None)
-                continue
-            # Parse the raw whois data from the whois server and extract the whois
-            # information.
-            log21.debug('Parsing data...')
-            self.__whois_data = {}
-            i = 0
-            lines = self.__raw.decode(
-                self.__get_decode_encoding(self.__raw), errors=self.__encoding_errors
-            ).split('\n')
-            while i < len(lines):
-                line = lines[i]
-                if line.startswith('%') or line.startswith('#'):
-                    i += 1
-                    continue
-                if ':' in line:
-                    key, value = line.split(':', 1)
-                    if not value:
-                        value = ''
-                        for j in range(i + 1, len(lines)):
-                            if lines[j].startswith('%') or lines[j].startswith('#'):
-                                continue
-                            if ':' in lines[j]:
-                                break
-                            value += lines[j].strip() + '\n'
-                            i = j
-                    if key.strip().upper() not in self.__whois_data:
-                        self.__whois_data[key.strip().upper()] = value.strip()
-                    else:
-                        if isinstance(self.__whois_data[key.strip().upper()], list):
-                            self.__whois_data[key.strip().upper()].append(value.strip())
-                        elif isinstance(self.__whois_data[key.strip().upper()], str):
-                            self.__whois_data[key.strip().upper()] = [
-                                self.__whois_data[key.strip().upper()],
-                                value.strip()
-                            ]
+    def __call_whois_server(self, whois_server: str) -> bool:
+        """Call the whois server.
+
+        :param whois_server: The whois server to call.
+        :return: True if the data was received and parsed successfully, False otherwise.
+        """
+        # Create a socket connection to the whois server.
+        log21.debug(f'Connecting to {LBLUE}{whois_server}{RESET}...')
+        try:
+            sock = socket.create_connection((whois_server, 43))
+            sock.settimeout(self.timeout)
+        except socket.error as ex:
+            log21.debug(
+                f'Error connecting to "{RED}{whois_server}{RESET}": '
+                f'{LRED}{ex.__class__.__name__}: {ex}{RESET}'
+            )
+            self.__error = (
+                f'Error connecting to "{whois_server}": '
+                f'{ex.__class__.__name__}: {ex}', ex
+            )
+            return False
+        # Send the domain name to the whois server.
+        log21.debug(f'Sending query for {LCYAN}{self.domain}{RESET}...')
+        try:
+            sock.send(
+                str(self.domain
+                    ).encode(self.__encode_encoding, errors=self.__encoding_errors) +
+                b'\r\n'
+            )
+        except socket.error as ex:
+            log21.debug(
+                f'Error sending query to "{RED}{whois_server}{RESET}": '
+                f'{LRED}{ex.__class__.__name__}: {ex}{RESET}'
+            )
+            self.__error = (
+                f'Error sending query to "{whois_server}": '
+                f'{ex.__class__.__name__}: {ex}', ex
+            )
+            return False
+        # Receive the raw whois data from the whois server.
+        self.__raw = b''
+        log21.debug('Receiving data...')
+        try:
+            while True:
+                data = sock.recv(4096)
+                if not data:
+                    break
+                self.__raw += data
+        except socket.error as ex:
+            log21.debug(
+                f'Error receiving data from "{RED}{whois_server}{RESET}": '
+                f'{LRED}{ex.__class__.__name__}: {ex}{RESET}'
+            )
+            self.__error = (
+                f'Error receiving data from "{whois_server}": '
+                f'{ex.__class__.__name__}: {ex}', ex
+            )
+            return False
+        sock.close()
+
+        # Checks if we received any data from the whois server.
+        if not self.__raw:
+            log21.debug(f'No data received from {RED}{whois_server}{RESET}.')
+            self.__error = (f'No data received from {whois_server}.', None)
+            return False
+
+        # Parse the raw whois data from the whois server and extract the whois
+        # information.
+        return self.__parse_whois_data()
+
+    def __parse_whois_data(self):
+        """Parse the raw whois data.
+
+        :return: True if the data was parsed successfully, False otherwise.
+        """
+        log21.debug('Parsing data...')
+        self.__whois_data = {}
+        i = 0
+        lines = self.__raw.decode(
+            self.__get_decode_encoding(self.__raw), errors=self.__encoding_errors
+        ).split('\n')
+        while i < len(lines):
+            line = lines[i]
+            if line.startswith('%') or line.startswith('#'):
                 i += 1
-
-            if not self.__whois_data:
-                log21.debug(f'{LRED}No data found.{RESET}')
-                self.__error = ('No whois data found.', None)
                 continue
+            if ':' in line:
+                key, value = line.split(':', 1)
+                if not value:
+                    value = ''
+                    for j in range(i + 1, len(lines)):
+                        if lines[j].startswith('%') or lines[j].startswith('#'):
+                            continue
+                        if ':' in lines[j]:
+                            break
+                        value += lines[j].strip() + '\n'
+                        i = j
+                if key.strip().upper() not in self.__whois_data:
+                    self.__whois_data[key.strip().upper()] = value.strip()
+                else:
+                    if isinstance(self.__whois_data[key.strip().upper()], list):
+                        self.__whois_data[key.strip().upper()].append(value.strip())
+                    elif isinstance(self.__whois_data[key.strip().upper()], str):
+                        self.__whois_data[key.strip().upper()] = [
+                            self.__whois_data[key.strip().upper()],
+                            value.strip()
+                        ]
+            i += 1
 
-            # Check if the whois server returned any error messages.
-            if 'ERROR' in self.__whois_data or 'WHOIS ERROR' in self.__whois_data:
-                log21.debug(f'{LRED}Error{RESET} found in whois data.')
-                self.__error = ('Error found in whois data.', None)
-                continue
+        if not self.__whois_data:
+            log21.debug(f'{LRED}No data found.{RESET}')
+            self.__error = ('No whois data found.', None)
+            return False
 
-            self.__error = None
-            return
+        # Check if the whois server returned any error messages.
+        if 'ERROR' in self.__whois_data or 'WHOIS ERROR' in self.__whois_data:
+            log21.debug(f'{LRED}Error{RESET} found in whois data.')
+            self.__error = ('Error found in whois data.', None)
+            return False
+
+        self.__error = None
+        return True
 
     def __rdap(self):
         # Get the rdap information for the domain.
@@ -575,6 +607,78 @@ class WHOIS:  # pylint: disable=too-many-instance-attributes
         self.__parse_rdap_data()
         return
 
+    # Handle entities
+    def __handle_entity(self, prefix: str, entity_: dict):
+        """
+        Handles an entity dictionary.
+        Example entity:
+        >>> {
+        ...     "objectClassName": "entity",
+        ...     "handle": "...",
+        ...     "roles": ["..."],
+        ...     "publicIds": [{...}],
+        ...     "vcardArray": ["vcard", [...]],
+        ...     "entities": [{...}, ...],
+        ...     "events": [{...}, ...],
+        ...     "remarks": [{...}, ...]
+        ... }
+        ...
+
+        :param prefix: The prefix to use for the key.
+        :param entity_: The entity dictionary.
+        """
+        prefix += entity_.get('roles', [''])[0]
+        prefix = prefix.strip().upper()
+        for public_id in entity_.get('publicIds', []):
+            # Example:
+            # "publicIds": [
+            #     {
+            #         "type": "IANA Registrar ID",
+            #         "identifier": "292"
+            #     }
+            # ]
+            if 'type' in public_id and 'identifier' in public_id:
+                self.__whois_data[public_id.get('type').upper()
+                                  ] = public_id.get('identifier')
+
+        # Handle vcards
+        # Reference: https://www.rfc-editor.org/rfc/rfc6350.txt
+        # Reference: https://en.wikipedia.org/wiki/VCard
+        # vcardArray Example:
+        # "vcardArray": [
+        #                   "vcard",
+        #                   [
+        #                       [
+        #                           "version",
+        #                           {},
+        #                           "text",
+        #                           "4.0"
+        #                       ],
+        #                       [
+        #                           "fn",
+        #                           {},
+        #                           "text",
+        #                           "MarkMonitor Inc."
+        #                       ]
+        #                   ]
+        #               ]
+        for vcard in entity_.get('vcardArray', ['vcard', []])[1]:
+            data = vcard[3]
+            temp = []
+            if isinstance(data, list):
+                for part in data:
+                    if part:
+                        temp.append(str(part))
+            data = ' '.join(temp)
+
+            if vcard[0] in vcard_map:
+                self.__whois_data[prefix + ' ' + vcard_map[vcard[0]]] = data
+            elif vcard[0] != 'version':
+                self.__whois_data[prefix + ' ' + vcard[0].upper()] = data
+
+        for _entity in entity_.get('entities', []):
+            self.__handle_entity(prefix, _entity)
+
     def __parse_rdap_data(self):
         """Parses the RDAP data and puts some information in whois_data dictionary."""
 
@@ -604,80 +708,8 @@ class WHOIS:  # pylint: disable=too-many-instance-attributes
             if nameserver.get('ldhName'):
                 self.__whois_data['NAME SERVER'].append(nameserver.get('ldhName'))
 
-        # Handle entities
-        def handle_entity(prefix: str, entity_: dict):
-            """
-            Handles an entity dictionary.
-            Example entity:
-            >>> {
-            ...     "objectClassName": "entity",
-            ...     "handle": "...",
-            ...     "roles": ["..."],
-            ...     "publicIds": [{...}],
-            ...     "vcardArray": ["vcard", [...]],
-            ...     "entities": [{...}, ...],
-            ...     "events": [{...}, ...],
-            ...     "remarks": [{...}, ...]
-            ... }
-            ...
-
-            :param prefix: The prefix to use for the key.
-            :param entity_: The entity dictionary.
-            """
-            prefix += entity_.get('roles', [''])[0]
-            prefix = prefix.strip().upper()
-            for public_id in entity_.get('publicIds', []):
-                # Example:
-                # "publicIds": [
-                #     {
-                #         "type": "IANA Registrar ID",
-                #         "identifier": "292"
-                #     }
-                # ]
-                if 'type' in public_id and 'identifier' in public_id:
-                    self.__whois_data[public_id.get('type').upper()
-                                      ] = public_id.get('identifier')
-
-            # Handle vcards
-            # Reference: https://www.rfc-editor.org/rfc/rfc6350.txt
-            # Reference: https://en.wikipedia.org/wiki/VCard
-            # vcardArray Example:
-            # "vcardArray": [
-            #                   "vcard",
-            #                   [
-            #                       [
-            #                           "version",
-            #                           {},
-            #                           "text",
-            #                           "4.0"
-            #                       ],
-            #                       [
-            #                           "fn",
-            #                           {},
-            #                           "text",
-            #                           "MarkMonitor Inc."
-            #                       ]
-            #                   ]
-            #               ]
-            for vcard in entity_.get('vcardArray', ['vcard', []])[1]:
-                data = vcard[3]
-                temp = []
-                if isinstance(data, list):
-                    for part in data:
-                        if part:
-                            temp.append(str(part))
-                data = ' '.join(temp)
-
-                if vcard[0] in vcard_map:
-                    self.__whois_data[prefix + ' ' + vcard_map[vcard[0]]] = data
-                elif vcard[0] != 'version':
-                    self.__whois_data[prefix + ' ' + vcard[0].upper()] = data
-
-            for _entity in entity_.get('entities', []):
-                handle_entity(prefix, _entity)
-
         for entity in self.__rdap_data.get('entities', []):
-            handle_entity('', entity)
+            self.__handle_entity('', entity)
 
         self.__success = True
 

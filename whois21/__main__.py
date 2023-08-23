@@ -32,6 +32,7 @@ def get_filename(directory: str, domain: str, format_: str = 'json') -> str:
 
 
 def main():
+    """The main function."""
     parser = log21.ColorizingArgumentParser()
     parser.add_argument('domains', help='The domain/ip to lookup.', type=str, nargs='*')
     parser.add_argument(

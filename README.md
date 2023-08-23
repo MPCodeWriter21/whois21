@@ -7,7 +7,8 @@ whois21
 ![repo size](https://img.shields.io/github/repo-size/MPCodeWriter21/whois21)
 [![CodeFactor](https://www.codefactor.io/repository/github/mpcodewriter21/whois21/badge)](https://www.codefactor.io/repository/github/mpcodewriter21/whois21)
 
-WHOIS21 is a simple and easy to use python package that lets you easily query whois information of a domain.
+WHOIS21 is a simple and easy to use python package that lets you easily query whois information of a
+domain.
 
 Features
 --------
@@ -17,7 +18,8 @@ Features
 + Query whois information of a TLD from various whois servers and parse the results.
 + Get the Registration Information of a domain from different RDAP servers and parse the results.
 + Get IP information from ip-api.com.
-+ Any idea? Feel free to [open an issue](https://github.com/MPCodeWriter21/whois21/issues) or submit a pull request.
++ Any idea? Feel free to [open an issue](https://github.com/MPCodeWriter21/whois21/issues) or submit
+  a pull request.
 
 ![issues](https://img.shields.io/github/issues/MPCodeWriter21/whois21)
 ![contributors](https://img.shields.io/github/contributors/MPCodeWriter21/whois21)
@@ -27,8 +29,8 @@ Installation
 
 Well, this is a python package so the first thing you need is python.
 
-If you don't have python installed, please visit [Python.org](https://python.org) and install the latest version of
-python based on your OS.
+If you don't have python installed, please visit [Python.org](https://python.org) and install the
+latest version of python based on your OS.
 
 Then you can install whois21 using pip module:
 
@@ -82,12 +84,10 @@ python -m build .
 Changes
 -------
 
-### 1.4.0
+### 1.4.1
 
-+ Added IP module and fixed some issues with IP and ASN registration data lookup.
-+ Modified the functions responsible for getting json data to download the data if the 
-  file exists but is empty.
-+ Fixed minor bugs.
++ Made whois run after initializing the `WHOIS` object optional.
++ Tried to decrease the complexity of the code.
 
 Usage Examples:
 ---------------
@@ -98,7 +98,7 @@ Usage Examples:
 
 ```shell
 # -v : verbose mode
-whois21 -v results google.com
+whois21 -v google.com
 ```
 
 + Example 2: Query whois information of 3 domains and save the results to a directory
@@ -128,7 +128,7 @@ whois21 -np -o results -o results -r microsoft.com python.org 140.82.121.3 185.1
 
 + Example 1: Query whois information of GitHub.com using WHOIS class.
 
-```python3
+```python
 # First step is to import the package
 import whois21
 
@@ -195,7 +195,7 @@ References
   Wikipedia): [https://en.wikipedia.org/wiki/Registration_Data_Access_Protocol](https://en.wikipedia.org/wiki/Registration_Data_Access_Protocol)
 + RDAP Response Profile (
   PDF): [https://www.icann.org/en/system/files/files/rdap-response-profile-15feb19-en.pdf](https://www.icann.org/en/system/files/files/rdap-response-profile-15feb19-en.pdf)
-+ RFC 9224 Finding the Authoritative Registration Data Access Protocol (RDAP) Service 
++ RFC 9224 Finding the Authoritative Registration Data Access Protocol (RDAP) Service
   [https://www.rfc-editor.org/rfc/rfc9224.html](https://www.rfc-editor.org/rfc/rfc9224.html)
 + Registration Data Access Protocol (RDAP) Query
   Format: [https://www.rfc-editor.org/rfc/rfc7482.html](https://www.rfc-editor.org/rfc/rfc7482.html)
@@ -207,7 +207,8 @@ References
   [https://www.rfc-editor.org/rfc/rfc7483](https://www.rfc-editor.org/rfc/rfc7483)
 + Registration Data Access Protocol (RDAP) Partial
   Response: [https://www.rfc-editor.org/rfc/rfc8982.html](https://www.rfc-editor.org/rfc/rfc8982.html)
-+ vCard Format Specification: [https://www.rfc-editor.org/rfc/rfc6350.txt](https://www.rfc-editor.org/rfc/rfc6350.txt)
++ vCard Format
+  Specification: [https://www.rfc-editor.org/rfc/rfc6350.txt](https://www.rfc-editor.org/rfc/rfc6350.txt)
 + vCard (Wikipedia): [https://en.wikipedia.org/wiki/VCard](https://en.wikipedia.org/wiki/VCard)
 + Notes on vCard, LDIF and mappings to
   RDF: [https://www.w3.org/2002/12/cal/vcard-notes.html](https://www.w3.org/2002/12/cal/vcard-notes.html)

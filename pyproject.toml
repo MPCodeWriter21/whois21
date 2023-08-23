@@ -19,12 +19,12 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
-    "log21>=2.6.2", 
-    "importlib_resources>=5.10.2", 
+    "log21>=2.6.2",
+    "chardet>=5.2.0",
     "requests>=2.28.2",
-    "chardet>=5.2.0"
+    "importlib_resources>=5.10.2"
 ]
-version = "1.4.0"
+version = "1.4.1"
 
 [tool.setuptools]
 packages = ["whois21"]
@@ -37,8 +37,8 @@ Source = "https://github.com/MPCodeWriter21/whois21"
 [project.optional-dependencies]
 dev = [
     "yapf>=0.40.1",
-    "pylint>=2.17.4",
     "isort>=5.12.0",
+    "pylint>=2.17.4",
     "docformatter>=1.7.1"
 ]
 
@@ -49,11 +49,11 @@ whois21 = "whois21.__main__:run"
 max-line-length = 88
 
 disable = [
-  "protected-access",
-  "too-few-public-methods",
-  "too-many-arguments",
-  "too-many-locals",
-  "fixme",
+    "too-few-public-methods",
+    "too-many-arguments",
+    "protected-access",
+    "too-many-locals",
+    "fixme",
 ]
 
 # Add "ip" to good names for pylint
@@ -66,15 +66,15 @@ max-returns = 8
 [tool.yapf]
 column_limit = 88
 split_before_dot = true
-split_before_first_argument = true
 dedent_closing_brackets = true
+split_before_first_argument = true
 
 [tool.isort]
 line_length = 88
-combine_as_imports = true
 order_by_type = true
+combine_as_imports = true
 
 [tool.docformatter]
+style = "sphinx"
 wrap-summaries = 88
 wrap-descriptions = 88
-style = "sphinx"

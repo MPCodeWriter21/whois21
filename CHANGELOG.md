@@ -6,6 +6,11 @@ Help this project by [Donation](DONATE.md)
 Changes log
 -----------
 
+### 1.4.1
+
++ Made whois run after initializing the `WHOIS` object optional.
++ Tried to decrease the complexity of the code.
+
 ### 1.4.0
 
 + Added IP module and fixed some issues with IP and ASN registration data lookup.

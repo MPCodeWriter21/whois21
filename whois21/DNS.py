@@ -114,6 +114,32 @@ def get_dns_services(
     return [Service(service) for service in dns.get('services', [])]
 
 
+def _get_rdap(url: str, rdaps: List[dict], timeout: int = 10) -> None:
+    """Gets the RDAP information from a URL.
+
+    :param url: The URL to get the RDAP information from.
+    :param rdaps: The list to append the RDAP information to.
+    :param timeout: The timeout for the request.
+    """
+    if not url:
+        return
+
+    log21.debug(f'Getting domain registration data from {url}')
+
+    response = requests.get(url, timeout=timeout)
+    response_json = response.json()
+    if response.status_code == 200 and response_json.get('ldhName'):
+        if response_json not in rdaps:
+            rdaps.append(response_json)
+
+            # Checks if there is another RDAP server to get the RDAP information
+            # from.
+            for link in response_json.get('links', []):
+                if link.get('rel') != 'self' and link.get('type'
+                                                          ) == 'application/rdap+json':
+                    _get_rdap(link.get('href'), rdaps, timeout=timeout)
+
+
 def domain_registration_data_lookup_(domain: str, timeout: int = 10) -> List[dict]:
     """Gets a domain's RDAP information from registry operators and/or registrars in
     real-time.
@@ -130,35 +156,15 @@ def domain_registration_data_lookup_(domain: str, timeout: int = 10) -> List[dic
 
     rdaps = []
 
-    def get_rdap(url: str):
-        """Gets the RDAP information from a URL.
-
-        :param url: The URL to get the RDAP information from.
-        :return: A dictionary containing the RDAP information.
-        """
-        if not url:
-            return
-
-        log21.debug(f'Getting domain registration data from {url}')
-
-        response = requests.get(url, timeout=timeout)
-        response_json = response.json()
-        if response.status_code == 200 and response_json.get('ldhName'):
-            if response_json not in rdaps:
-                rdaps.append(response_json)
-
-                # Checks if there is another RDAP server to get the RDAP information
-                # from.
-                for link in response_json.get('links', []):
-                    if link.get('rel') != 'self' and link.get(
-                            'type') == 'application/rdap+json':
-                        get_rdap(link.get('href'))
-
     for service in get_dns_services():
         if any((tld in service) for tld in domains):
             service_url = service.address
             try:
-                get_rdap(os.path.join(service_url, 'domain/', domain))
+                _get_rdap(
+                    os.path.join(service_url, 'domain/', domain),
+                    rdaps,
+                    timeout=timeout
+                )
             except Exception as ex:  # pylint: disable=broad-except
                 log21.debug(
                     f'Error getting domain registration data from {service_url}: '
@@ -166,6 +172,47 @@ def domain_registration_data_lookup_(domain: str, timeout: int = 10) -> List[dic
                 )
 
     return rdaps
+
+
+def __add_info(info, key, data: Union[dict, list]):
+    """Adds information to the info dictionary.
+
+    :param info: The info dictionary.
+    :param key: The key to add the information to.
+    :param data: The data to add.
+    :return:
+    """
+    if key:
+        if key in info:
+            part = info[key]
+        else:
+            if isinstance(data, dict):
+                part = info[key] = {}
+            elif isinstance(data, list):
+                part = info[key] = []
+            else:
+                raise TypeError('data must be a dict or list')
+    else:
+        part = info
+
+    if isinstance(data, dict):
+        for key_, value in data.items():
+            if key_ not in part:
+                part[key_] = value
+            else:
+                if isinstance(part[key_], list) and isinstance(value, list):
+                    __add_info(info, key_, value)
+                elif isinstance(part[key_], dict) and isinstance(value, dict):
+                    __add_info(info, key_, value)
+                else:
+                    # Throw it away
+                    pass
+    elif isinstance(data, list):
+        if isinstance(part, list):
+            part.extend(data)
+        else:
+            # Throw it away
+            pass
 
 
 def domain_registration_data_lookup(domain: str, timeout: int = 10) -> dict:
@@ -178,50 +225,10 @@ def domain_registration_data_lookup(domain: str, timeout: int = 10) -> dict:
     """
     info = {}
 
-    def add_info(info_, key_, data: Union[dict, list]):
-        """Adds information to the info dictionary.
-
-        :param info_: The info dictionary.
-        :param key_: The key to add the information to.
-        :param data: The data to add.
-        :return:
-        """
-        if key_:
-            if key_ in info_:
-                part = info_[key_]
-            else:
-                if isinstance(data, dict):
-                    part = info_[key_] = {}
-                elif isinstance(data, list):
-                    part = info_[key_] = []
-                else:
-                    raise TypeError('data must be a dict or list')
-        else:
-            part = info_
-
-        if isinstance(data, dict):
-            for key, value in data.items():
-                if key not in part:
-                    part[key] = value
-                else:
-                    if isinstance(part[key], list) and isinstance(value, list):
-                        add_info(info_, key, value)
-                    elif isinstance(part[key], dict) and isinstance(value, dict):
-                        add_info(info_, key, value)
-                    else:
-                        # Throw it away
-                        pass
-        elif isinstance(data, list):
-            if isinstance(part, list):
-                part.extend(data)
-            else:
-                # Throw it away
-                pass
-
     rdaps = domain_registration_data_lookup_(domain, timeout)
 
     for rdap in rdaps:
         rdap.pop('links', None)
-        add_info(info, None, rdap)
+        __add_info(info, None, rdap)
 
     return info
