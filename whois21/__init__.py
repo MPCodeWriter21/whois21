@@ -1,9 +1,9 @@
 # whois21.__init__.py
 
 import os
-import re
 import json
 import socket
+import string
 from typing import Any, Set, Dict, Tuple, Union, Optional, Sequence
 from datetime import datetime
 
@@ -11,6 +11,9 @@ import log21
 import chardet
 import requests
 import importlib_resources
+from log21.Colors import (RED, BLUE, GREEN, RESET, LIGHT_RED as LRED,
+                          LIGHT_BLUE as LBLUE, LIGHT_CYAN as LCYAN,
+                          LIGHT_GREEN as LGREEN)
 
 from whois21.IP import (validate_ip, get_ipv4_services, get_ipv6_services,
                         download_ipv4_json, download_ipv6_json,
@@ -23,7 +26,7 @@ from whois21.DNS import (get_dns_dict, get_dns_services, download_dns_json,
                          domain_registration_data_lookup,
                          domain_registration_data_lookup_)
 
-__version__ = '1.4.1'
+__version__ = '1.4.2'
 __github__ = 'https://github.com/MPCodeWriter21/whois21'
 __author__ = 'CodeWriter21'
 __email__ = 'CodeWriter21@gmail.com'
@@ -41,15 +44,7 @@ __all__ = [
     'whois_servers', 'vcard_map', 'lookup_ip_ip_api', 'batch_lookup_ip_ip_api'
 ]
 
-LRED = log21.get_color('Light Red')
-LGREEN = log21.get_color('Light Green')
-LBLUE = log21.get_color('Light Blue')
-LCYAN = log21.get_color('Light Cyan')
-RED = log21.get_color('Red')
-GREEN = log21.get_color('Green')
-BLUE = log21.get_color('Blue')
-CYAN = log21.get_color('Cyan')
-RESET = log21.get_color('Reset')
+STRIP_CHARS = string.whitespace + '<>'
 
 
 def download_whois_servers(
@@ -211,13 +206,16 @@ class WHOIS:  # pylint: disable=too-many-instance-attributes
         self.registry_domain_id = None
         self.registrar_whois_server = None
         self.registrar_url = None
-        self.updated_date = None
-        self.creation_date = None
-        self.expires_date = None
-        self.registrar_name = None
+        self.updated_date: Optional[datetime] = None
+        self.creation_date: Optional[datetime] = None
+        self.expires_date: Optional[datetime] = None
+        self.registrar_name: Union[str, set] = ''
         self.registrar_iana_id = None
         self.registrar_abuse_contact_email = None
         self.registrar_abuse_contact_phone = None
+        self.emails: set = set()
+        self.phone_numbers: set = set()
+        self.fax_numbers: set = set()
         self.status = None
         self.name_servers = None
         self.__domain = domain.lower() if domain else self.__domain
@@ -288,28 +286,43 @@ class WHOIS:  # pylint: disable=too-many-instance-attributes
         self.__set_attrs()
 
     def __set_attrs(self):
+        data = self.__whois_data
+
         # Save the whois information in object attributes.
-        self.registry_domain_id = self.__whois_data.get('REGISTRY DOMAIN ID', '')
-        self.registrar_whois_server = self.__whois_data.get(
-            'REGISTRAR WHOIS SERVER', ''
-        )
-        self.registrar_url = self.__whois_data.get('REGISTRAR URL', '')
-        self.updated_date = self.__whois_data.get('UPDATED DATE', '')
-        self.creation_date = self.__whois_data.get('CREATION DATE', '')
-        self.expires_date = (
-            self.__whois_data.get('REGISTRY EXPIRY DATE', '')
-            or self.__whois_data.get('REGISTRAR REGISTRATION EXPIRATION DATE', '')
-        )
-        self.registrar_name = self.__whois_data.get('REGISTRAR', '')
-        self.registrar_iana_id = self.__whois_data.get('REGISTRAR IANA ID', '')
-        self.registrar_abuse_contact_email = self.__whois_data.get(
+        self.registry_domain_id = data.get('REGISTRY DOMAIN ID', '')
+        self.registrar_whois_server = data.get('REGISTRAR WHOIS SERVER', '')
+        self.registrar_url = data.get('REGISTRAR URL', '')
+        self.registrar_name = data.get('REGISTRAR', '')
+        if isinstance(self.registrar_name, list):
+            self.registrar_name = set(self.registrar_name)
+        self.registrar_iana_id = data.get('REGISTRAR IANA ID', '')
+        self.registrar_abuse_contact_email = data.get(
             'REGISTRAR ABUSE CONTACT EMAIL', ''
         )
-        self.registrar_abuse_contact_phone = self.__whois_data.get(
+        self.registrar_abuse_contact_phone = data.get(
             'REGISTRAR ABUSE CONTACT PHONE', ''
         )
-        self.status = self.__whois_data.get('DOMAIN STATUS', [])
-        self.name_servers = self.__whois_data.get('NAME SERVER', [])
+        mails = []
+        emails = (
+            ([mails] if isinstance(mails := data.get('EMAIL', []), str) else mails) +
+            ([mails] if isinstance(mails := data.get('E-MAIL', []), str) else mails)
+        )
+        if isinstance(emails, list):
+            self.emails = set(emails)
+        phone_numbers = data.get('PHONE', [])
+        if isinstance(phone_numbers, str):
+            self.phone_numbers = {phone_numbers}
+        if isinstance(phone_numbers, list):
+            self.phone_numbers = set(phone_numbers)
+        fax = []
+        fax_numbers = (
+            ([fax] if isinstance(fax := data.get('FAX', []), str) else fax) +
+            ([fax] if isinstance(fax := data.get('FAX-NO', []), str) else fax)
+        )
+        if isinstance(fax_numbers, list):
+            self.fax_numbers = set(fax_numbers)
+        self.status = data.get('DOMAIN STATUS', [])
+        self.name_servers = data.get('NAME SERVER', []) + data.get('NSERVER', [])
 
         def parse_time(date_time: str) -> Union[datetime, None]:
             """Parses a date time string.
@@ -317,20 +330,30 @@ class WHOIS:  # pylint: disable=too-many-instance-attributes
             :param date_time: The date time string.
             :return: The parsed date time.
             """
-            result = re.findall(
-                r'(\d{4}\-\d{2}\-\d{2}).(\d{2}:\d{2}:\d{2})*', date_time
-            )
-            if result:
-                return datetime.strptime(' '.join(result[0]), '%Y-%m-%d %H:%M:%S')
-            return None
+            try:
+                return datetime.fromisoformat(date_time)
+            except ValueError:
+                return None
 
         # Convert the dates to datetime objects.
-        if self.updated_date:
-            self.updated_date = parse_time(self.updated_date)
-        if self.creation_date:
-            self.creation_date = parse_time(self.creation_date)
-        if self.expires_date:
-            self.expires_date = parse_time(self.expires_date)
+        updated_date = (
+            data.get('UPDATED DATE', '') or data.get('UPDATED', '')
+            or data.get('LAST UPDATED', '')
+        )
+        creation_date = (
+            data.get('CREATION DATE', '') or data.get('CREATED DATE', '')
+            or data.get('CREATED', '')
+        )
+        expires_date = (
+            data.get('REGISTRY EXPIRY DATE', '') or data.get('EXPIRY DATE', '')
+            or data.get('REGISTRAR REGISTRATION EXPIRATION DATE', '')
+        )
+        if updated_date:
+            self.updated_date = parse_time(updated_date)
+        if creation_date:
+            self.creation_date = parse_time(creation_date)
+        if expires_date:
+            self.expires_date = parse_time(expires_date)
 
     def __whois(self):
         if not self.__servers:
@@ -530,7 +553,7 @@ class WHOIS:  # pylint: disable=too-many-instance-attributes
         :return: True if the data was parsed successfully, False otherwise.
         """
         log21.debug('Parsing data...')
-        self.__whois_data = {}
+        data = self.__whois_data = {}
         i = 0
         lines = self.__raw.decode(
             self.__get_decode_encoding(self.__raw), errors=self.__encoding_errors
@@ -541,7 +564,7 @@ class WHOIS:  # pylint: disable=too-many-instance-attributes
                 i += 1
                 continue
             if ':' in line:
-                key, value = line.split(':', 1)
+                key_name, value = line.split(':', 1)
                 if not value:
                     value = ''
                     for j in range(i + 1, len(lines)):
@@ -549,27 +572,24 @@ class WHOIS:  # pylint: disable=too-many-instance-attributes
                             continue
                         if ':' in lines[j]:
                             break
-                        value += lines[j].strip() + '\n'
+                        value += lines[j].strip(STRIP_CHARS) + '\n'
                         i = j
-                if key.strip().upper() not in self.__whois_data:
-                    self.__whois_data[key.strip().upper()] = value.strip()
+                if (key := key_name.strip(STRIP_CHARS).upper()) not in data:
+                    data[key] = value.strip(STRIP_CHARS)
                 else:
-                    if isinstance(self.__whois_data[key.strip().upper()], list):
-                        self.__whois_data[key.strip().upper()].append(value.strip())
-                    elif isinstance(self.__whois_data[key.strip().upper()], str):
-                        self.__whois_data[key.strip().upper()] = [
-                            self.__whois_data[key.strip().upper()],
-                            value.strip()
-                        ]
+                    if isinstance(data[key], list):
+                        data[key].append(value.strip(STRIP_CHARS))
+                    elif isinstance(data[key], str):
+                        data[key] = [data[key], value.strip(STRIP_CHARS)]
             i += 1
 
-        if not self.__whois_data:
-            log21.debug(f'{LRED}No data found.{RESET}')
+        if not data:
+            log21.debug(f'{LRED}No data found.')
             self.__error = ('No whois data found.', None)
             return False
 
         # Check if the whois server returned any error messages.
-        if 'ERROR' in self.__whois_data or 'WHOIS ERROR' in self.__whois_data:
+        if 'ERROR' in data or 'WHOIS ERROR' in data:
             log21.debug(f'{LRED}Error{RESET} found in whois data.')
             self.__error = ('Error found in whois data.', None)
             return False
@@ -743,6 +763,11 @@ class WHOIS:  # pylint: disable=too-many-instance-attributes
     def domain(self) -> Union[str, int]:
         """The domain/ip/asn that was queried."""
         return self.__domain
+
+    @property
+    def expiration_date(self) -> Optional[datetime]:
+        """The expiration date of the domain (if available)."""
+        return self.expires_date
 
     @property
     def success(self) -> bool:

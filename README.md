@@ -84,10 +84,11 @@ python -m build .
 Changes
 -------
 
-### 1.4.1
+### 1.4.2
 
-+ Made whois run after initializing the `WHOIS` object optional.
-+ Tried to decrease the complexity of the code.
++ Added new attributes to `WHOIS` class: `emails`, `phone_numbers` and `fax_numbers`
++ Added a new property that contains expiration date(`expiration_date`) to `WHOIS` class
++ Improved WHOIS data parsing (For both human eyes and computer results)
 
 Usage Examples:
 ---------------
