@@ -8,6 +8,8 @@ import log21
 import requests
 import importlib_resources
 
+from whois21.base import download_json
+
 __all__ = [
     'validate_asn', 'download_asn_json', 'get_asn_dict', 'Service', 'get_asn_services',
     'asn_registration_data_lookup_', 'asn_registration_data_lookup'
@@ -44,21 +46,7 @@ def download_asn_json(
     :param timeout: The timeout for the request.
     :return: The path to the downloaded file.
     """
-
-    if not save_path:
-        save_path = str(importlib_resources.files('whois21') / 'asn.json')
-
-    if not os.path.exists(save_path):
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-
-    log21.debug(f'Downloading asn.json file to {save_path}.')
-
-    with open(save_path, 'wb') as file:
-        file.write(
-            requests.get('https://data.iana.org/rdap/asn.json', timeout=timeout).content
-        )
-
-    return str(save_path)
+    return download_json('asn.json', save_path=save_path, timeout=timeout)
 
 
 def get_asn_dict(
