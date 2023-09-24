@@ -8,7 +8,7 @@ import log21
 import requests
 import importlib_resources
 
-from whois21.base import download_json
+from .base import download_json
 
 __all__ = [
     'validate_asn', 'download_asn_json', 'get_asn_dict', 'Service', 'get_asn_services',
