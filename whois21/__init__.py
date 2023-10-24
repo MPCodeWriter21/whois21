@@ -4,7 +4,7 @@ import os
 import json
 import socket
 import string
-from typing import Any, Set, Dict, Tuple, Union, Optional, Sequence
+from typing import Any, Set, Dict, List, Tuple, Union, Optional, Sequence
 from datetime import datetime
 
 import log21
@@ -26,7 +26,7 @@ from whois21.DNS import (get_dns_dict, get_dns_services, download_dns_json,
                          domain_registration_data_lookup,
                          domain_registration_data_lookup_)
 
-__version__ = '1.4.2'
+__version__ = '1.4.3'
 __github__ = 'https://github.com/MPCodeWriter21/whois21'
 __author__ = 'CodeWriter21'
 __email__ = 'CodeWriter21@gmail.com'
@@ -206,9 +206,9 @@ class WHOIS:  # pylint: disable=too-many-instance-attributes
         self.registry_domain_id = None
         self.registrar_whois_server = None
         self.registrar_url = None
-        self.updated_date: Optional[datetime] = None
-        self.creation_date: Optional[datetime] = None
-        self.expires_date: Optional[datetime] = None
+        self.updated_date: Optional[List[datetime]] = None
+        self.creation_date: Optional[List[datetime]] = None
+        self.expires_date: Optional[List[datetime]] = None
         self.registrar_name: Union[str, set] = ''
         self.registrar_iana_id = None
         self.registrar_abuse_contact_email = None
@@ -324,16 +324,34 @@ class WHOIS:  # pylint: disable=too-many-instance-attributes
         self.status = data.get('DOMAIN STATUS', [])
         self.name_servers = data.get('NAME SERVER', []) + data.get('NSERVER', [])
 
-        def parse_time(date_time: str) -> Union[datetime, None]:
+        def parse_time(
+            date_time: Union[str, Sequence[str]]
+        ) -> Union[List[datetime], None]:
             """Parses a date time string.
 
             :param date_time: The date time string.
             :return: The parsed date time.
             """
-            try:
-                return datetime.fromisoformat(date_time)
-            except ValueError:
-                return None
+            if isinstance(date_time, str):
+                try:
+                    return [datetime.fromisoformat(date_time)]
+                except ValueError:
+                    return None
+            else:
+                if isinstance(date_time, Sequence):
+                    result = []
+                    for date in date_time:
+                        try:
+                            result.append(datetime.fromisoformat(date))
+                        except ValueError:
+                            pass
+                        except TypeError:
+                            log21.debug(
+                                "WHOIS: __set_attrs: parse_time: TypeError:",
+                                f"{date_time = }, {type(date_time) = }"
+                            )
+                    return result if result else None
+            return None
 
         # Convert the dates to datetime objects.
         updated_date = (
@@ -577,10 +595,11 @@ class WHOIS:  # pylint: disable=too-many-instance-attributes
                 if (key := key_name.strip(STRIP_CHARS).upper()) not in data:
                     data[key] = value.strip(STRIP_CHARS)
                 else:
-                    if isinstance(data[key], list):
-                        data[key].append(value.strip(STRIP_CHARS))
-                    elif isinstance(data[key], str):
-                        data[key] = [data[key], value.strip(STRIP_CHARS)]
+                    if (value := value.strip(STRIP_CHARS)):
+                        if isinstance(data[key], list):
+                            data[key].append(value)
+                        elif isinstance(data[key], str):
+                            data[key] = [data[key], value]
             i += 1
 
         if not data:
@@ -765,7 +784,7 @@ class WHOIS:  # pylint: disable=too-many-instance-attributes
         return self.__domain
 
     @property
-    def expiration_date(self) -> Optional[datetime]:
+    def expiration_date(self) -> Optional[List[datetime]]:
         """The expiration date of the domain (if available)."""
         return self.expires_date
 

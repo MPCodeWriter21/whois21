@@ -5,6 +5,10 @@ Help this project by [Donation](DONATE.md)
 
 Changes log
 -----------
+### 1.4.3
+
++ Fixed issue #5.
++ Dates are now lists.
 
 ### 1.4.2
 
