@@ -5,6 +5,11 @@ Help this project by [Donation](DONATE.md)
 
 Changes log
 -----------
+
+### 1.4.4
+
++ Fixed concatenating issue with nameservers.
+
 ### 1.4.3
 
 + Fixed issue #5.

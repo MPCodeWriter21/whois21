@@ -84,10 +84,9 @@ python -m build .
 Changes
 -------
 
-### 1.4.3
+### 1.4.4
 
-+ Fixed issue #5.
-+ Dates are now lists.
++ Fixed concatenating issue with nameservers.
 
 Usage Examples:
 ---------------
