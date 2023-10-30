@@ -26,7 +26,7 @@ from whois21.DNS import (get_dns_dict, get_dns_services, download_dns_json,
                          domain_registration_data_lookup,
                          domain_registration_data_lookup_)
 
-__version__ = '1.4.3'
+__version__ = '1.4.4'
 __github__ = 'https://github.com/MPCodeWriter21/whois21'
 __author__ = 'CodeWriter21'
 __email__ = 'CodeWriter21@gmail.com'
@@ -322,7 +322,13 @@ class WHOIS:  # pylint: disable=too-many-instance-attributes
         if isinstance(fax_numbers, list):
             self.fax_numbers = set(fax_numbers)
         self.status = data.get('DOMAIN STATUS', [])
-        self.name_servers = data.get('NAME SERVER', []) + data.get('NSERVER', [])
+        name_servers = data.get('NAME SERVER', [])
+        nserver = data.get('NSERVER', [])
+        if not isinstance(name_servers, list):
+            name_servers = [name_servers]
+        if not isinstance(nserver, list):
+            nserver = [nserver]
+        self.name_servers = name_servers + nserver
 
         def parse_time(
             date_time: Union[str, Sequence[str]]
