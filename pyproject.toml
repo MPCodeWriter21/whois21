@@ -22,9 +22,10 @@ dependencies = [
     "log21>=2.7.1",
     "chardet>=5.2.0",
     "requests>=2.31.0",
-    "importlib_resources>=6.1.0"
+    "importlib_resources>=6.1.0",
+    "python-dateutil>=2.8.2"
 ]
-version = "1.4.6a0"
+version = "1.4.6a1"
 
 [tool.setuptools]
 packages = ["whois21"]

@@ -14,6 +14,7 @@ import importlib_resources
 from log21.Colors import (RED, BLUE, GREEN, RESET, LIGHT_RED as LRED,
                           LIGHT_BLUE as LBLUE, LIGHT_CYAN as LCYAN,
                           LIGHT_GREEN as LGREEN)
+from dateutil.parser import ParserError, parse
 
 from whois21.IP import (validate_ip, get_ipv4_services, get_ipv6_services,
                         download_ipv4_json, download_ipv6_json,
@@ -26,7 +27,7 @@ from whois21.DNS import (get_dns_dict, get_dns_services, download_dns_json,
                          domain_registration_data_lookup,
                          domain_registration_data_lookup_)
 
-__version__ = '1.4.6a0'
+__version__ = '1.4.6a1'
 __github__ = 'https://github.com/MPCodeWriter21/whois21'
 __author__ = 'CodeWriter21'
 __email__ = 'CodeWriter21@gmail.com'
@@ -338,18 +339,20 @@ class WHOIS:  # pylint: disable=too-many-instance-attributes
             :param date_time: The date time string.
             :return: The parsed date time.
             """
+            if not date_time:
+                return None
             if isinstance(date_time, str):
                 try:
-                    return [datetime.fromisoformat(date_time)]
-                except ValueError:
+                    return [parse(date_time)]
+                except (ValueError, ParserError):
                     return None
             else:
                 if isinstance(date_time, Sequence):
                     result = []
                     for date in date_time:
                         try:
-                            result.append(datetime.fromisoformat(date))
-                        except ValueError:
+                            result.append(parse(date))
+                        except (ValueError, ParserError):
                             pass
                         except TypeError:
                             log21.debug(
