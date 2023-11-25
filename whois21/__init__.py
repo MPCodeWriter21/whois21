@@ -26,7 +26,7 @@ from whois21.DNS import (get_dns_dict, get_dns_services, download_dns_json,
                          domain_registration_data_lookup,
                          domain_registration_data_lookup_)
 
-__version__ = '1.4.5'
+__version__ = '1.4.6a0'
 __github__ = 'https://github.com/MPCodeWriter21/whois21'
 __author__ = 'CodeWriter21'
 __email__ = 'CodeWriter21@gmail.com'
@@ -366,7 +366,7 @@ class WHOIS:  # pylint: disable=too-many-instance-attributes
         )
         creation_date = (
             data.get('CREATION DATE', '') or data.get('CREATED DATE', '')
-            or data.get('CREATED', '')
+            or data.get('CREATED', '') or data.get('DOMAIN NAME COMMENCEMENT DATE', '')
         )
         expires_date = (
             data.get('REGISTRY EXPIRY DATE', '') or data.get('EXPIRY DATE', '')

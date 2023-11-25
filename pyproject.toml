@@ -24,7 +24,7 @@ dependencies = [
     "requests>=2.31.0",
     "importlib_resources>=6.1.0"
 ]
-version = "1.4.5"
+version = "1.4.6a0"
 
 [tool.setuptools]
 packages = ["whois21"]
