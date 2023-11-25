@@ -84,11 +84,9 @@ python -m build .
 Changes
 -------
 
-### 1.4.2
+### 1.4.5
 
-+ Added new attributes to `WHOIS` class: `emails`, `phone_numbers` and `fax_numbers`
-+ Added a new property that contains expiration date(`expiration_date`) to `WHOIS` class
-+ Improved WHOIS data parsing (For both human eyes and computer results)
++ Updated Dependencies
 
 Usage Examples:
 ---------------
@@ -185,7 +183,8 @@ In order to support this project you can donate some crypto of your choice 8D
 
 [Donate Addresses](https://github.com/MPCodeWriter21/whois21/blob/master/DONATE.md)
 
-Or if you can't, give [this project](https://github.com/MPCodeWriter21/whois21) a star on GitHub :)
+Or if you can't, simply give [this project](https://github.com/MPCodeWriter21/whois21)
+one star on GitHub :)
 
 References
 ----------

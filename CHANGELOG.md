@@ -6,6 +6,19 @@ Help this project by [Donation](DONATE.md)
 Changes log
 -----------
 
+### 1.4.5
+
++ Updated Dependencies
+
+### 1.4.4
+
++ Fixed concatenating issue with nameservers.
+
+### 1.4.3
+
++ Fixed issue #5.
++ Dates are now lists.
+
 ### 1.4.2
 
 + Added new attributes to `WHOIS` class: `emails`, `phone_numbers` and `fax_numbers`
