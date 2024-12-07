@@ -7,8 +7,8 @@ whois21
 ![repo size](https://img.shields.io/github/repo-size/MPCodeWriter21/whois21)
 [![CodeFactor](https://www.codefactor.io/repository/github/mpcodewriter21/whois21/badge)](https://www.codefactor.io/repository/github/mpcodewriter21/whois21)
 
-WHOIS21 is a simple and easy to use python package that lets you easily query whois information of a
-domain.
+WHOIS21 is a simple and easy to use python package that lets you easily query whois
+information of a domain.
 
 Features
 --------
@@ -16,12 +16,14 @@ Features
 ### WHOIS
 
 + Query whois information of a TLD from various whois servers and parse the results.
-+ Get the Registration Information of a domain from different RDAP servers and parse the results.
++ Get the Registration Information of a domain from different RDAP servers and parse the
+  results.
 + Get IP information from ip-api.com.
-+ Any idea? Feel free to [open an issue](https://github.com/MPCodeWriter21/whois21/issues) or submit
-  a pull request.
++ Any idea? Feel free to
+  [open an issue](https://github.com/MPCodeWriter21/whois21/issues) or submit a pull
+  request.
 
-![issues](https://img.shields.io/github/issues/MPCodeWriter21/whois21)
+![Issues](https://img.shields.io/github/issues/MPCodeWriter21/whois21)
 ![contributors](https://img.shields.io/github/contributors/MPCodeWriter21/whois21)
 
 Installation
@@ -29,8 +31,8 @@ Installation
 
 Well, this is a python package so the first thing you need is python.
 
-If you don't have python installed, please visit [Python.org](https://python.org) and install the
-latest version of python based on your OS.
+If you don't have python installed, please visit [Python.org](https://python.org) and
+install the latest version of python based on your OS.
 
 Then you can install whois21 using pip module:
 
@@ -53,42 +55,43 @@ python -m build .
 ### Dependencies
 
 + [requests](https://requests.readthedocs.io/en/master/): Used for:
-    - Downloading list of whois and RDAP servers.
-    - Downloading RDAP information.
+  + Downloading list of whois and RDAP servers.
+  + Downloading RDAP information.
 + [importlib_resources](https://importlib-resources.readthedocs.io/en/latest/): Used for:
-    - Getting the path to the whois21 package installation directory(for saving server lists).
+  + Getting the path to the whois21 package installation directory(for saving server lists).
 + [chardet](https://pypi.org/project/chardet/): Used for:
-    - Detecting the encoding of the whois response.
+  + Detecting the encoding of the whois response.
 + [log21](https://github.com/MPCodeWriter21/log21): Used for:
-    - Colorized Logging.
-    - Printing collected data in pprint or tree format.
+  + Colorized Logging.
+  + Printing collected data in pprint or tree format.
 + [os](https://docs.python.org/3/library/os.html) (A core python module): Used for:
-    - Working with files and directories.
+  + Working with files and directories.
 + [socket](https://docs.python.org/3/library/socket.html) (A core python module): Used for:
-    - Establishing TCP connection to the whois server.
+  + Establishing TCP connection to the whois server.
 + [json](https://docs.python.org/3/library/json.html) (A core python module): Used for:
-    - Parsing JSON data from RDAP servers.
-    - Parsing RDAP server list.
-    - Saving collected whois or/and RDAP data to a file.
-    - Loading some package data from a file.
+  + Parsing JSON data from RDAP servers.
+  + Parsing RDAP server list.
+  + Saving collected whois or/and RDAP data to a file.
+  + Loading some package data from a file.
 + [datetime](https://docs.python.org/3/library/datetime.html) (A core python module): Used for:
-    - Converting Creation/Updated/Expiration date to a usable python datetime object.
+  + Converting Creation/Updated/Expiration date to a usable python datetime object.
 + [ipaddress](https://docs.python.org/3/library/ipaddress.html) (A core python module): Used for:
-    - Validating IPv4 and IPv6 addresses.
+  + Validating IPv4 and IPv6 addresses.
 + [typing](https://docs.python.org/3/library/typing.html) (A core python module): Used for:
-    - Type checking.
-    - Type hinting.
+  + Type checking.
+  + Type hinting.
 + [re](https://docs.python.org/3/library/re.html) (A core python module): Used for:
-    - Matching date-time strings with regular expressions.
+  + Matching date-time strings with regular expressions.
 
 Changes
 -------
 
-### 1.4.5
+### 1.4.6
 
 + Updated Dependencies
++ Updated LICENSE
 
-Usage Examples:
+Usage Examples
 ---------------
 
 ### CLI Examples
@@ -163,6 +166,7 @@ print(f'Updated date    : {whois.updated_date}')
 
 About
 -----
+
 Author: CodeWriter21 (Mehrad Pooryoussof)
 
 GitHub: [MPCodeWriter21](https://github.com/MPCodeWriter21)
